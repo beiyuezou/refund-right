@@ -463,14 +463,14 @@ function WizardPage() {
               disabled={step === 1 || submitting}
               className="text-muted-foreground"
             >
-              <ArrowLeft className="h-4 w-4" /> Back
+              <ArrowLeft className="h-4 w-4" /> {t("wizard.back")}
             </Button>
             {step < 3 ? (
               <Button
                 onClick={nextStep}
                 className="bg-accent text-accent-foreground hover:opacity-95 h-11 px-6 font-semibold"
               >
-                Continue <ArrowRight className="h-4 w-4" />
+                {t("wizard.continue")} <ArrowRight className="h-4 w-4" />
               </Button>
             ) : (
               <Button
@@ -480,11 +480,11 @@ function WizardPage() {
               >
                 {submitting ? (
                   <>
-                    <Loader2 className="h-4 w-4 animate-spin" /> Analyzing…
+                    <Loader2 className="h-4 w-4 animate-spin" /> {t("wizard.submitting")}
                   </>
                 ) : (
                   <>
-                    Analyze my rights <ArrowRight className="h-4 w-4" />
+                    {t("wizard.submit")} <ArrowRight className="h-4 w-4" />
                   </>
                 )}
               </Button>
@@ -493,7 +493,7 @@ function WizardPage() {
 
           {!user && (
             <p className="mt-4 text-center text-xs text-muted-foreground">
-              You'll be asked to create a free account when you submit, so we can save your analysis.
+              {t("wizard.signinPrompt")}
             </p>
           )}
         </div>
