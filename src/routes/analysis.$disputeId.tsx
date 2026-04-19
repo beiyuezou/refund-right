@@ -13,11 +13,12 @@ import {
   ShieldAlert,
   Sparkles,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { SiteHeader, SiteFooter } from "@/components/SiteChrome";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { CATEGORIES, type CategoryKey } from "@/lib/categories";
+import { type CategoryKey } from "@/lib/categories";
 
 export const Route = createFileRoute("/analysis/$disputeId")({
   head: () => ({
@@ -61,6 +62,7 @@ type Analysis = {
 };
 
 function AnalysisPage() {
+  const { t } = useTranslation();
   const { disputeId } = useParams({ from: "/analysis/$disputeId" });
   const { user, loading: authLoading } = useAuth();
   const [dispute, setDispute] = useState<Dispute | null>(null);
@@ -115,9 +117,9 @@ function AnalysisPage() {
         body: { dispute_id: dispute.id },
       });
       if (error) {
-        toast.error("Re-analysis failed. Please try again.");
+        toast.error(t("analysis.reanalyzeFailed"));
       } else {
-        toast.success("Re-analyzing your dispute…");
+        toast.success(t("analysis.reanalyzing"));
         await load();
       }
     } finally {
@@ -139,14 +141,14 @@ function AnalysisPage() {
     return (
       <Shell>
         <div className="text-center py-16">
-          <h1 className="text-2xl font-bold text-primary">Sign in to view analysis</h1>
-          <p className="mt-2 text-muted-foreground">Your disputes are saved to your account.</p>
+          <h1 className="text-2xl font-bold text-primary">{t("analysis.signinView")}</h1>
+          <p className="mt-2 text-muted-foreground">{t("analysis.signinViewSub")}</p>
           <Link
             to="/auth"
             search={{ redirect: `/analysis/${disputeId}` }}
             className="mt-6 inline-flex h-11 items-center rounded-md bg-accent px-5 text-sm font-semibold text-accent-foreground"
           >
-            Sign in
+            {t("nav.signIn")}
           </Link>
         </div>
       </Shell>
@@ -157,13 +159,13 @@ function AnalysisPage() {
     return (
       <Shell>
         <div className="text-center py-16">
-          <h1 className="text-2xl font-bold text-primary">Dispute not found</h1>
-          <p className="mt-2 text-muted-foreground">This dispute doesn't exist or isn't yours.</p>
+          <h1 className="text-2xl font-bold text-primary">{t("analysis.notFound")}</h1>
+          <p className="mt-2 text-muted-foreground">{t("analysis.notFoundSub")}</p>
           <Link
             to="/dashboard"
             className="mt-6 inline-flex h-11 items-center rounded-md bg-primary px-5 text-sm font-semibold text-primary-foreground"
           >
-            Back to dashboard
+            {t("analysis.backDashboard")}
           </Link>
         </div>
       </Shell>
@@ -171,11 +173,11 @@ function AnalysisPage() {
   }
 
   const Icon = ICONS[dispute.category];
-  const cat = CATEGORIES[dispute.category];
   const isWaiting =
     !analysis &&
     (dispute.status === "pending" || dispute.status === "analyzing");
   const failed = !analysis && dispute.status === "failed";
+  const countryLabel = t(`countries.${dispute.country}`, { defaultValue: dispute.country });
 
   return (
     <Shell>
@@ -183,7 +185,7 @@ function AnalysisPage() {
         to="/dashboard"
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary mb-4"
       >
-        <ArrowLeft className="h-4 w-4" /> Back to disputes
+        <ArrowLeft className="h-4 w-4" /> {t("analysis.backToDisputes")}
       </Link>
 
       {/* Summary */}
@@ -195,10 +197,10 @@ function AnalysisPage() {
             </span>
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-primary leading-tight">
-                {cat.label}
+                {t(`categories.${dispute.category}.label`)}
               </h1>
               <p className="text-sm text-muted-foreground mt-0.5">
-                {dispute.country}
+                {countryLabel}
                 {dispute.city ? ` · ${dispute.city}` : ""}
                 {dispute.incident_date ? ` · ${dispute.incident_date}` : ""}
                 {dispute.amount ? ` · ${dispute.amount} ${dispute.currency ?? ""}` : ""}
@@ -214,7 +216,7 @@ function AnalysisPage() {
               className="gap-1.5"
             >
               {retrying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-              Re-analyze
+              {t("analysis.reanalyze")}
             </Button>
           )}
         </div>
@@ -226,26 +228,24 @@ function AnalysisPage() {
       {isWaiting && (
         <div className="mt-6 rounded-2xl border border-border bg-card p-10 shadow-card text-center">
           <Sparkles className="mx-auto h-8 w-8 text-accent animate-pulse" />
-          <h2 className="mt-3 text-lg font-semibold text-primary">Building your rights analysis…</h2>
+          <h2 className="mt-3 text-lg font-semibold text-primary">{t("analysis.building")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            This usually takes 10–20 seconds. We're cross-referencing the consumer-protection framework for {dispute.country}.
+            {t("analysis.buildingSub", { country: countryLabel })}
           </p>
         </div>
       )}
 
       {failed && (
         <div className="mt-6 rounded-2xl border border-destructive/30 bg-destructive/5 p-6 text-center">
-          <h2 className="text-lg font-semibold text-destructive">Analysis didn't complete</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Something went wrong. You can try again now.
-          </p>
+          <h2 className="text-lg font-semibold text-destructive">{t("analysis.failed")}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t("analysis.failedSub")}</p>
           <Button
             onClick={rerun}
             disabled={retrying}
             className="mt-4 bg-accent text-accent-foreground hover:opacity-95"
           >
             {retrying ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-            Retry analysis
+            {t("analysis.retry")}
           </Button>
         </div>
       )}
@@ -258,7 +258,7 @@ function AnalysisPage() {
           {/* Recommendation */}
           <section className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-card">
             <h2 className="flex items-center gap-2 text-lg font-semibold text-primary">
-              <Sparkles className="h-5 w-5 text-accent" /> AI Recommendation
+              <Sparkles className="h-5 w-5 text-accent" /> {t("analysis.recommendation")}
             </h2>
             <div className="mt-3 prose-styles whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">
               {analysis.recommendation}
@@ -267,10 +267,8 @@ function AnalysisPage() {
 
           {/* Leverage points */}
           <section className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-card">
-            <h2 className="text-lg font-semibold text-primary">Key leverage points</h2>
-            <p className="text-sm text-muted-foreground mt-1">
-              Strongest arguments — including any deceptive platform tactics we detected.
-            </p>
+            <h2 className="text-lg font-semibold text-primary">{t("analysis.leverage")}</h2>
+            <p className="text-sm text-muted-foreground mt-1">{t("analysis.leverageSub")}</p>
             <ul className="mt-4 space-y-3">
               {analysis.leverage_points.map((p, i) => (
                 <li key={i} className="flex gap-3 rounded-lg border border-border bg-secondary/30 p-3">
@@ -289,18 +287,18 @@ function AnalysisPage() {
           {/* Draft email */}
           <section className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-card">
             <div className="flex items-center justify-between gap-3 flex-wrap">
-              <h2 className="text-lg font-semibold text-primary">Draft complaint email</h2>
+              <h2 className="text-lg font-semibold text-primary">{t("analysis.draftEmail")}</h2>
               <div className="flex gap-2">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={async () => {
                     await navigator.clipboard.writeText(analysis.draft_email);
-                    toast.success("Copied to clipboard.");
+                    toast.success(t("analysis.copied"));
                   }}
                   className="gap-1.5"
                 >
-                  <Copy className="h-3.5 w-3.5" /> Copy
+                  <Copy className="h-3.5 w-3.5" /> {t("analysis.copy")}
                 </Button>
                 <Button
                   variant="outline"
@@ -308,7 +306,7 @@ function AnalysisPage() {
                   onClick={() => downloadText(analysis.draft_email, `complaint-${dispute.id.slice(0, 8)}.txt`)}
                   className="gap-1.5"
                 >
-                  <Download className="h-3.5 w-3.5" /> Download
+                  <Download className="h-3.5 w-3.5" /> {t("analysis.download")}
                 </Button>
               </div>
             </div>
@@ -323,20 +321,18 @@ function AnalysisPage() {
                 onClick={() => setShowFullEmail((s) => !s)}
                 className="text-sm font-semibold text-accent hover:underline"
               >
-                {showFullEmail ? "Show less" : "Show full email"}
+                {showFullEmail ? t("analysis.showLess") : t("analysis.showFull")}
               </button>
             </div>
             <p className="mt-3 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Check className="h-3.5 w-3.5 text-accent" /> Auto-saved to your account
+              <Check className="h-3.5 w-3.5 text-accent" /> {t("analysis.autoSaved")}
             </p>
           </section>
         </>
       )}
 
       <p className="mt-8 rounded-md border border-border bg-secondary/40 p-3 text-xs text-muted-foreground">
-        <strong className="text-primary">Informational only — not legal advice.</strong> RefundRight cites
-        publicly available consumer-protection rules and is intended to help you assert your rights. For binding advice,
-        consult a qualified lawyer in the relevant jurisdiction.
+        <strong className="text-primary">{t("analysis.disclaimer")}</strong> {t("analysis.disclaimerBody")}
       </p>
     </Shell>
   );
@@ -349,28 +345,13 @@ function RiskGauge({
   risk: "strong" | "moderate" | "weak";
   confidence: number;
 }) {
+  const { t } = useTranslation();
   const map = {
-    strong: {
-      label: "Strong case",
-      sub: "Documentation and law are on your side.",
-      color: "var(--risk-strong)",
-      pct: 88,
-    },
-    moderate: {
-      label: "Moderate case",
-      sub: "Winnable, but expect pushback.",
-      color: "var(--risk-moderate)",
-      pct: 60,
-    },
-    weak: {
-      label: "Weak case",
-      sub: "Uphill — gather more evidence first.",
-      color: "var(--risk-weak)",
-      pct: 28,
-    },
+    strong: { label: t("analysis.riskStrong"), sub: t("analysis.riskStrongSub"), color: "var(--risk-strong)", pct: 88 },
+    moderate: { label: t("analysis.riskModerate"), sub: t("analysis.riskModerateSub"), color: "var(--risk-moderate)", pct: 60 },
+    weak: { label: t("analysis.riskWeak"), sub: t("analysis.riskWeakSub"), color: "var(--risk-weak)", pct: 28 },
   }[risk];
 
-  // Semicircle gauge using SVG arc
   const r = 80;
   const cx = 100;
   const cy = 100;
@@ -384,7 +365,6 @@ function RiskGauge({
     <div className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-card">
       <div className="flex flex-col sm:flex-row items-center gap-6">
         <svg viewBox="0 0 200 110" className="w-44 h-24 shrink-0">
-          {/* Track */}
           <path
             d={`M 20 100 A 80 80 0 0 1 180 100`}
             fill="none"
@@ -392,7 +372,6 @@ function RiskGauge({
             strokeWidth="14"
             strokeLinecap="round"
           />
-          {/* Value */}
           <path
             d={`M 20 100 A 80 80 0 ${largeArc} 1 ${x} ${y}`}
             fill="none"
@@ -417,10 +396,10 @@ function RiskGauge({
           >
             {map.label}
           </span>
-          <h2 className="mt-2 text-xl font-bold text-primary">Risk level</h2>
+          <h2 className="mt-2 text-xl font-bold text-primary">{t("analysis.riskLevel")}</h2>
           <p className="text-sm text-muted-foreground mt-1 max-w-md">{map.sub}</p>
           <p className="text-xs text-muted-foreground mt-1">
-            AI confidence: {confidence}%
+            {t("analysis.confidence", { pct: confidence })}
           </p>
         </div>
       </div>

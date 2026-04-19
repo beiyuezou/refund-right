@@ -8,11 +8,11 @@ import {
   Plus,
   ShieldAlert,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { SiteHeader, SiteFooter } from "@/components/SiteChrome";
-import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
-import { CATEGORIES, type CategoryKey } from "@/lib/categories";
+import { type CategoryKey } from "@/lib/categories";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -47,6 +47,7 @@ const RISK_COLOR: Record<string, string> = {
 };
 
 function DashboardPage() {
+  const { t } = useTranslation();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [rows, setRows] = useState<DisputeRow[] | null>(null);
@@ -80,17 +81,15 @@ function DashboardPage() {
         <div className="mx-auto max-w-4xl px-4 sm:px-6 py-8">
           <div className="flex items-center justify-between gap-3 mb-6">
             <div>
-              <h1 className="text-2xl sm:text-3xl font-bold text-primary">My disputes</h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                All cases saved to your account.
-              </p>
+              <h1 className="text-2xl sm:text-3xl font-bold text-primary">{t("dashboard.title")}</h1>
+              <p className="text-sm text-muted-foreground mt-1">{t("dashboard.sub")}</p>
             </div>
             <Link
               to="/claim/$category"
               params={{ category: "hotel" }}
               className="inline-flex h-10 items-center gap-1.5 rounded-md bg-accent px-4 text-sm font-semibold text-accent-foreground hover:opacity-95"
             >
-              <Plus className="h-4 w-4" /> New dispute
+              <Plus className="h-4 w-4" /> {t("dashboard.newDispute")}
             </Link>
           </div>
 
@@ -103,19 +102,17 @@ function DashboardPage() {
               <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-primary-soft text-primary">
                 <FileText className="h-6 w-6" />
               </span>
-              <h2 className="mt-3 text-lg font-semibold text-primary">No disputes yet</h2>
-              <p className="mt-1 text-sm text-muted-foreground">
-                Start your first claim and we'll analyze it in seconds.
-              </p>
+              <h2 className="mt-3 text-lg font-semibold text-primary">{t("dashboard.empty")}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">{t("dashboard.emptySub")}</p>
               <div className="mt-5 flex flex-wrap justify-center gap-2">
-                {(Object.keys(CATEGORIES) as CategoryKey[]).map((k) => (
+                {(["hotel", "flight", "insurance"] as CategoryKey[]).map((k) => (
                   <Link
                     key={k}
                     to="/claim/$category"
                     params={{ category: k }}
                     className="inline-flex h-10 items-center rounded-md border border-input bg-background px-4 text-sm font-medium text-primary hover:bg-secondary"
                   >
-                    {CATEGORIES[k].label}
+                    {t(`categories.${k}.label`)}
                   </Link>
                 ))}
               </div>
@@ -139,7 +136,7 @@ function DashboardPage() {
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
                             <h3 className="font-semibold text-primary truncate">
-                              {CATEGORIES[r.category].label}
+                              {t(`categories.${r.category}.label`)}
                             </h3>
                             {a ? (
                               <span
@@ -154,7 +151,7 @@ function DashboardPage() {
                             )}
                           </div>
                           <p className="text-sm text-muted-foreground mt-0.5">
-                            {r.country}
+                            {t(`countries.${r.country}`, { defaultValue: r.country })}
                             {r.city ? ` · ${r.city}` : ""} ·{" "}
                             {new Date(r.created_at).toLocaleDateString()}
                           </p>

@@ -1,5 +1,6 @@
 import { createFileRoute, Link, notFound, useParams } from "@tanstack/react-router";
 import { ArrowLeft, ArrowRight, CalendarDays, Scale } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { SiteHeader, SiteFooter } from "@/components/SiteChrome";
 import { ARTICLES, getArticle } from "@/lib/knowledge";
 import type { CategoryKey } from "@/lib/categories";
@@ -22,22 +23,27 @@ export const Route = createFileRoute("/knowledge/$slug")({
       ],
     };
   },
-  notFoundComponent: () => (
+  notFoundComponent: NotFoundFallback,
+  component: ArticlePage,
+});
+
+function NotFoundFallback() {
+  const { t } = useTranslation();
+  return (
     <div className="min-h-screen bg-background flex flex-col">
       <SiteHeader />
       <div className="mx-auto max-w-2xl px-4 py-16 text-center">
-        <h1 className="text-2xl font-bold text-primary">Article not found</h1>
+        <h1 className="text-2xl font-bold text-primary">{t("knowledge.notFound")}</h1>
         <Link
           to="/knowledge"
           className="mt-4 inline-flex items-center gap-1.5 text-accent font-semibold"
         >
-          <ArrowLeft className="h-4 w-4" /> Back to knowledge base
+          <ArrowLeft className="h-4 w-4" /> {t("knowledge.backToKb")}
         </Link>
       </div>
     </div>
-  ),
-  component: ArticlePage,
-});
+  );
+}
 
 const CAT_TO_CLAIM: Record<string, CategoryKey> = {
   hotel: "hotel",
@@ -47,10 +53,12 @@ const CAT_TO_CLAIM: Record<string, CategoryKey> = {
 };
 
 function ArticlePage() {
+  const { t, i18n } = useTranslation();
   const { slug } = useParams({ from: "/knowledge/$slug" });
   const article = getArticle(slug)!;
   const claimCategory = CAT_TO_CLAIM[article.category];
   const related = ARTICLES.filter((a) => a.slug !== article.slug).slice(0, 3);
+  const dateLocale = i18n.language?.startsWith("zh") ? "zh-CN" : undefined;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -61,27 +69,31 @@ function ArticlePage() {
             to="/knowledge"
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary mb-4"
           >
-            <ArrowLeft className="h-4 w-4" /> All guides
+            <ArrowLeft className="h-4 w-4" /> {t("knowledge.allGuides")}
           </Link>
 
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center rounded-full bg-primary-soft px-2.5 py-0.5 text-xs font-semibold text-primary">
-              {article.country}
+              {t(`countries.${article.country}`, { defaultValue: article.country })}
             </span>
             <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
               <CalendarDays className="h-3.5 w-3.5" />
-              Updated {new Date(article.updated).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
+              {t("knowledge.updated", {
+                date: new Date(article.updated).toLocaleDateString(dateLocale, {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                }),
+              })}
             </span>
           </div>
 
           <h1 className="mt-3 text-3xl sm:text-4xl font-extrabold tracking-tight text-primary">
             {article.title}
           </h1>
-          <p className="mt-3 text-lg text-muted-foreground leading-relaxed">
-            {article.summary}
-          </p>
+          <p className="mt-3 text-lg text-muted-foreground leading-relaxed">{article.summary}</p>
 
-          <Section title="Your rights">
+          <Section title={t("knowledge.rights")}>
             <ul className="space-y-2.5">
               {article.rights.map((r, i) => (
                 <Bullet key={i}>{r}</Bullet>
@@ -89,7 +101,7 @@ function ArticlePage() {
             </ul>
           </Section>
 
-          <Section title="Steps to take">
+          <Section title={t("knowledge.stepsTake")}>
             <ol className="space-y-3">
               {article.steps.map((s, i) => (
                 <li key={i} className="flex gap-3">
@@ -102,7 +114,7 @@ function ArticlePage() {
             </ol>
           </Section>
 
-          <Section title="Who to escalate to">
+          <Section title={t("knowledge.escalate")}>
             <ul className="space-y-2.5">
               {article.escalation.map((e, i) => (
                 <Bullet key={i}>{e}</Bullet>
@@ -110,14 +122,14 @@ function ArticlePage() {
             </ul>
           </Section>
 
-          <Section title="Template phrases">
+          <Section title={t("knowledge.templates")}>
             <div className="space-y-3">
-              {article.templates.map((t, i) => (
+              {article.templates.map((tmpl, i) => (
                 <blockquote
                   key={i}
                   className="rounded-lg border-l-4 border-accent bg-secondary/40 p-4 text-foreground italic"
                 >
-                  "{t}"
+                  "{tmpl}"
                 </blockquote>
               ))}
             </div>
@@ -128,10 +140,8 @@ function ArticlePage() {
             <div className="flex items-start gap-3">
               <Scale className="h-6 w-6 text-accent" />
               <div>
-                <h3 className="text-xl font-bold">Have a case like this?</h3>
-                <p className="mt-1 text-primary-foreground/80">
-                  Get a personalised AI rights analysis and a draft complaint email in minutes.
-                </p>
+                <h3 className="text-xl font-bold">{t("knowledge.haveCase")}</h3>
+                <p className="mt-1 text-primary-foreground/80">{t("knowledge.haveCaseSub")}</p>
               </div>
             </div>
             <Link
@@ -139,17 +149,17 @@ function ArticlePage() {
               params={{ category: claimCategory }}
               className="mt-5 inline-flex h-11 items-center gap-1.5 rounded-md bg-accent px-5 text-sm font-semibold text-accent-foreground hover:opacity-95"
             >
-              Start a claim <ArrowRight className="h-4 w-4" />
+              {t("home.startClaim")} <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
 
           <p className="mt-8 rounded-md border border-border bg-secondary/40 p-3 text-xs text-muted-foreground">
-            <strong className="text-primary">Informational only — not legal advice.</strong> For binding advice on your situation, consult a qualified lawyer in the relevant jurisdiction.
+            <strong className="text-primary">{t("analysis.disclaimer")}</strong> {t("analysis.disclaimerBody")}
           </p>
 
           {/* Related */}
           <section className="mt-12">
-            <h3 className="text-lg font-bold text-primary">More guides</h3>
+            <h3 className="text-lg font-bold text-primary">{t("knowledge.moreGuides")}</h3>
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
               {related.map((a) => (
                 <Link
@@ -158,7 +168,9 @@ function ArticlePage() {
                   params={{ slug: a.slug }}
                   className="rounded-xl border border-border bg-card p-4 shadow-card hover:border-accent/40 hover:shadow-elevated transition-all"
                 >
-                  <span className="text-xs font-semibold text-primary">{a.country}</span>
+                  <span className="text-xs font-semibold text-primary">
+                    {t(`countries.${a.country}`, { defaultValue: a.country })}
+                  </span>
                   <p className="mt-1 text-sm font-semibold text-primary leading-snug">
                     {a.title}
                   </p>
