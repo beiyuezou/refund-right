@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Shield, Moon, Sun, Languages } from "lucide-react";
+import { Shield, Moon, Sun, Languages, User, LogOut } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth, signOut } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
@@ -8,6 +8,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -60,6 +62,39 @@ function ThemeToggle() {
   );
 }
 
+function AccountMenu({ email }: { email: string | undefined }) {
+  const { t } = useTranslation();
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          aria-label={t("nav.account")}
+          className="ml-1 flex h-9 w-9 items-center justify-center rounded-full bg-primary-soft text-primary ring-1 ring-border transition-all hover:ring-accent/40 hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        >
+          <User className="h-4 w-4" strokeWidth={1.8} />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-56">
+        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground truncate">
+          {email ?? t("nav.account")}
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link to="/dashboard" className="cursor-pointer">
+            {t("nav.myDisputes")}
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={() => signOut()} className="cursor-pointer text-muted-foreground">
+          <LogOut className="mr-2 h-4 w-4" />
+          {t("nav.signOut")}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export function SiteHeader() {
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -71,12 +106,12 @@ export function SiteHeader() {
           <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-transform group-hover:scale-105">
             <Shield className="h-5 w-5" strokeWidth={2.4} />
           </span>
-          <span className="font-bold text-lg tracking-tight text-primary">
+          <span className="font-display font-bold text-lg tracking-tight text-primary">
             Refund<span className="text-accent">Right</span>
           </span>
         </Link>
 
-        <nav className="flex items-center gap-1 sm:gap-2">
+        <nav className="flex items-center gap-1 sm:gap-1.5">
           <Link
             to="/knowledge"
             className="hidden sm:inline-flex h-9 items-center px-3 text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
@@ -84,22 +119,12 @@ export function SiteHeader() {
             {t("nav.knowledge")}
           </Link>
           {user ? (
-            <>
-              <Link
-                to="/dashboard"
-                className="hidden sm:inline-flex h-9 items-center px-3 text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-              >
-                {t("nav.myDisputes")}
-              </Link>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => signOut()}
-                className="hidden sm:inline-flex"
-              >
-                {t("nav.signOut")}
-              </Button>
-            </>
+            <Link
+              to="/dashboard"
+              className="hidden sm:inline-flex h-9 items-center px-3 text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
+            >
+              {t("nav.myDisputes")}
+            </Link>
           ) : (
             <Link
               to="/auth"
@@ -117,6 +142,7 @@ export function SiteHeader() {
           >
             {t("nav.reportDispute")}
           </Link>
+          {user ? <AccountMenu email={user.email ?? undefined} /> : null}
         </nav>
       </div>
     </header>
@@ -133,7 +159,7 @@ export function SiteFooter() {
             <span className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
               <Shield className="h-4 w-4" strokeWidth={2.4} />
             </span>
-            <span className="font-bold text-primary">
+            <span className="font-display font-bold text-primary">
               Refund<span className="text-accent">Right</span>
             </span>
           </div>

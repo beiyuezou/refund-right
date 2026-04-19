@@ -6,7 +6,7 @@ const LANG_KEY = "rr_lang";
 const en = {
   nav: {
     knowledge: "Knowledge",
-    myDisputes: "My Disputes",
+    myDisputes: "Disputes",
     signIn: "Sign in",
     signOut: "Sign out",
     reportDispute: "Report Dispute",
@@ -14,6 +14,7 @@ const en = {
     theme: "Theme",
     light: "Light",
     dark: "Dark",
+    account: "Account",
   },
   footer: {
     tagline:
@@ -178,8 +179,9 @@ const en = {
   },
   knowledge: {
     badge: "Knowledge base",
-    title: "SE Asia traveler rights, plainly explained",
+    title: "Traveler rights, plainly explained",
     sub: "Jurisdiction-specific guidance on the disputes travelers actually face — hotel deposits in Thailand, OTA disputes in Singapore, MAVCOM rules in Malaysia, and more.",
+    subShort: "Country-by-country playbooks for the disputes travelers actually face.",
     readGuide: "Read guide",
     allGuides: "All guides",
     updated: "Updated {{date}}",
@@ -192,6 +194,11 @@ const en = {
     moreGuides: "More guides",
     notFound: "Article not found",
     backToKb: "Back to knowledge base",
+    catHotel: "Hotel",
+    catFlight: "Flight",
+    catInsurance: "Insurance",
+    catTransport: "Transport",
+    catGeneral: "General",
   },
   countries: {
     Thailand: "Thailand",
@@ -208,7 +215,7 @@ const en = {
 const zh: typeof en = {
   nav: {
     knowledge: "知识库",
-    myDisputes: "我的申诉",
+    myDisputes: "申诉",
     signIn: "登录",
     signOut: "退出",
     reportDispute: "提交申诉",
@@ -216,6 +223,7 @@ const zh: typeof en = {
     theme: "主题",
     light: "浅色",
     dark: "深色",
+    account: "账户",
   },
   footer: {
     tagline: "面向东南亚旅行纠纷的 AI 法律助手。为旅行者而生，而非平台。",
@@ -379,6 +387,7 @@ const zh: typeof en = {
     badge: "知识库",
     title: "东南亚旅行者权利指南",
     sub: "针对旅行者实际遇到的纠纷的专业指引——泰国酒店押金、新加坡 OTA 纠纷、马来西亚 MAVCOM 规则等。",
+    subShort: "针对旅行者真实遇到的纠纷，按国别整理的应对手册。",
     readGuide: "阅读指南",
     allGuides: "全部指南",
     updated: "更新于 {{date}}",
@@ -391,6 +400,11 @@ const zh: typeof en = {
     moreGuides: "更多指南",
     notFound: "未找到文章",
     backToKb: "返回知识库",
+    catHotel: "酒店",
+    catFlight: "航班",
+    catInsurance: "保险",
+    catTransport: "交通",
+    catGeneral: "通用",
   },
   countries: {
     Thailand: "泰国",
@@ -417,7 +431,9 @@ if (!i18n.isInitialized) {
     });
 }
 
-// Client-only: sync to user preference after hydration to avoid SSR mismatch.
+// Client-only: sync to user preference AFTER hydration to avoid SSR mismatch.
+// We wait one paint frame so React's initial render matches the server ("en"),
+// then switch to the user's preferred language.
 if (typeof window !== "undefined") {
   const stored = window.localStorage.getItem(LANG_KEY);
   const initial =
@@ -426,11 +442,17 @@ if (typeof window !== "undefined") {
       : (navigator.language || "en").toLowerCase().startsWith("zh")
         ? "zh"
         : "en";
-  // Defer until after hydration so server-rendered "en" matches first paint.
   if (initial !== i18n.language) {
-    queueMicrotask(() => {
+    // Defer past hydration: rAF runs after the first commit, setTimeout 0 as
+    // a safety net for environments without rAF (older SSR shims).
+    const apply = () => {
       void i18n.changeLanguage(initial);
-    });
+    };
+    if (typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(() => window.requestAnimationFrame(apply));
+    } else {
+      setTimeout(apply, 0);
+    }
   }
   i18n.on("languageChanged", (lng) => {
     try {

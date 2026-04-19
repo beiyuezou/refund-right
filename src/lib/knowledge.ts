@@ -2,7 +2,7 @@ export type Article = {
   slug: string;
   title: string;
   country: string;
-  category: "hotel" | "flight" | "insurance" | "general";
+  category: "hotel" | "flight" | "insurance" | "transport" | "general";
   summary: string;
   updated: string;
   rights: string[];
@@ -174,6 +174,37 @@ export const ARTICLES: Article[] = [
     ],
     templates: [
       "Please provide the specific policy clause relied on for this denial, together with evidence that it was disclosed to me prior to purchase. Where a third party instructed me to cancel or alter coverage, that instruction is on record and I reserve all rights.",
+    ],
+  },
+  {
+    slug: "vietnam-transport-scams",
+    title: "Vietnam: Taxi scams and motorbike rental disputes",
+    country: "Vietnam",
+    category: "transport",
+    summary:
+      "Rigged meters, inflated airport fares and aggressive damage claims on motorbike rentals are the most common transport disputes in Vietnam. The Law on Protection of Consumers' Rights 2023 and the tourist police give you real leverage.",
+    updated: "2025-09-20",
+    rights: [
+      "Under the Law on Protection of Consumers' Rights (No. 19/2023/QH15), drivers and rental operators must provide accurate pricing and honour the agreed rate.",
+      "Licensed taxis must use a working, sealed meter — refusal to use the meter or a meter that runs visibly fast is a regulatory violation.",
+      "Motorbike rental shops cannot withhold your passport. Holding a passport as security is unlawful under Vietnamese identity-document regulations.",
+      "Damage claims on rented vehicles must be supported by evidence and a fair, market-rate quote — not an arbitrary figure.",
+    ],
+    steps: [
+      "Photograph the vehicle (taxi licence plate, meter, or motorbike condition + odometer) before and after the trip or rental.",
+      "Insist on a written rental contract in English or with a translation; never hand over your passport — offer a photocopy or cash deposit instead.",
+      "If overcharged, pay only the fair amount, request a receipt, and report the licence plate immediately.",
+      "For rental damage disputes, demand an itemised quote from an independent shop before paying anything.",
+    ],
+    escalation: [
+      "Tourist Police hotline 113 (general) or 069 234 5860 (Hanoi tourist support).",
+      "Vietnam National Authority of Tourism complaint line: 1800 1099.",
+      "Vietnam Competition and Consumer Authority (VCCA) — bvntd.vcca.gov.vn for online complaints.",
+      "Your card issuer — chargeback for unauthorised top-ups or inflated rental damage charges.",
+    ],
+    templates: [
+      "Pursuant to Article 10 of the Law on Protection of Consumers' Rights 2023, the price charged was not the price agreed and was not displayed accurately. I am entitled to a refund of the overcharge of [AMOUNT].",
+      "Withholding my passport as rental security violates Vietnamese identity-document law. Please return my passport immediately, failing which I will report this to the tourist police on 113.",
     ],
   },
 ];
