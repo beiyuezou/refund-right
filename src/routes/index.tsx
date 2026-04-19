@@ -9,8 +9,9 @@ import {
   ScrollText,
   FileText,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { SiteHeader, SiteFooter } from "@/components/SiteChrome";
-import { CATEGORIES, type CategoryKey } from "@/lib/categories";
+import { type CategoryKey } from "@/lib/categories";
 import { ARTICLES } from "@/lib/knowledge";
 
 export const Route = createFileRoute("/")({
