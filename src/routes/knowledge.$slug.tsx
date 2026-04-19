@@ -1,0 +1,192 @@
+import { createFileRoute, Link, notFound, useParams } from "@tanstack/react-router";
+import { ArrowLeft, ArrowRight, CalendarDays, Scale } from "lucide-react";
+import { SiteHeader, SiteFooter } from "@/components/SiteChrome";
+import { ARTICLES, getArticle } from "@/lib/knowledge";
+import type { CategoryKey } from "@/lib/categories";
+
+export const Route = createFileRoute("/knowledge/$slug")({
+  loader: ({ params }) => {
+    const article = getArticle(params.slug);
+    if (!article) throw notFound();
+    return { article };
+  },
+  head: ({ loaderData }) => {
+    const a = loaderData?.article;
+    if (!a) return { meta: [{ title: "Article — RefundRight" }] };
+    return {
+      meta: [
+        { title: `${a.title} · RefundRight` },
+        { name: "description", content: a.summary },
+        { property: "og:title", content: a.title },
+        { property: "og:description", content: a.summary },
+      ],
+    };
+  },
+  notFoundComponent: () => (
+    <div className="min-h-screen bg-background flex flex-col">
+      <SiteHeader />
+      <div className="mx-auto max-w-2xl px-4 py-16 text-center">
+        <h1 className="text-2xl font-bold text-primary">Article not found</h1>
+        <Link
+          to="/knowledge"
+          className="mt-4 inline-flex items-center gap-1.5 text-accent font-semibold"
+        >
+          <ArrowLeft className="h-4 w-4" /> Back to knowledge base
+        </Link>
+      </div>
+    </div>
+  ),
+  component: ArticlePage,
+});
+
+const CAT_TO_CLAIM: Record<string, CategoryKey> = {
+  hotel: "hotel",
+  flight: "flight",
+  insurance: "insurance",
+  general: "hotel",
+};
+
+function ArticlePage() {
+  const { slug } = useParams({ from: "/knowledge/$slug" });
+  const article = getArticle(slug)!;
+  const claimCategory = CAT_TO_CLAIM[article.category];
+  const related = ARTICLES.filter((a) => a.slug !== article.slug).slice(0, 3);
+
+  return (
+    <div className="min-h-screen bg-background flex flex-col">
+      <SiteHeader />
+      <main className="flex-1">
+        <article className="mx-auto max-w-3xl px-4 sm:px-6 py-8">
+          <Link
+            to="/knowledge"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-primary mb-4"
+          >
+            <ArrowLeft className="h-4 w-4" /> All guides
+          </Link>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center rounded-full bg-primary-soft px-2.5 py-0.5 text-xs font-semibold text-primary">
+              {article.country}
+            </span>
+            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+              <CalendarDays className="h-3.5 w-3.5" />
+              Updated {new Date(article.updated).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })}
+            </span>
+          </div>
+
+          <h1 className="mt-3 text-3xl sm:text-4xl font-extrabold tracking-tight text-primary">
+            {article.title}
+          </h1>
+          <p className="mt-3 text-lg text-muted-foreground leading-relaxed">
+            {article.summary}
+          </p>
+
+          <Section title="Your rights">
+            <ul className="space-y-2.5">
+              {article.rights.map((r, i) => (
+                <Bullet key={i}>{r}</Bullet>
+              ))}
+            </ul>
+          </Section>
+
+          <Section title="Steps to take">
+            <ol className="space-y-3">
+              {article.steps.map((s, i) => (
+                <li key={i} className="flex gap-3">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground text-xs font-bold">
+                    {i + 1}
+                  </span>
+                  <span className="text-foreground leading-relaxed">{s}</span>
+                </li>
+              ))}
+            </ol>
+          </Section>
+
+          <Section title="Who to escalate to">
+            <ul className="space-y-2.5">
+              {article.escalation.map((e, i) => (
+                <Bullet key={i}>{e}</Bullet>
+              ))}
+            </ul>
+          </Section>
+
+          <Section title="Template phrases">
+            <div className="space-y-3">
+              {article.templates.map((t, i) => (
+                <blockquote
+                  key={i}
+                  className="rounded-lg border-l-4 border-accent bg-secondary/40 p-4 text-foreground italic"
+                >
+                  "{t}"
+                </blockquote>
+              ))}
+            </div>
+          </Section>
+
+          {/* CTA */}
+          <div className="mt-10 rounded-2xl border border-border bg-primary text-primary-foreground p-6 sm:p-8">
+            <div className="flex items-start gap-3">
+              <Scale className="h-6 w-6 text-accent" />
+              <div>
+                <h3 className="text-xl font-bold">Have a case like this?</h3>
+                <p className="mt-1 text-primary-foreground/80">
+                  Get a personalised AI rights analysis and a draft complaint email in minutes.
+                </p>
+              </div>
+            </div>
+            <Link
+              to="/claim/$category"
+              params={{ category: claimCategory }}
+              className="mt-5 inline-flex h-11 items-center gap-1.5 rounded-md bg-accent px-5 text-sm font-semibold text-accent-foreground hover:opacity-95"
+            >
+              Start a claim <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+
+          <p className="mt-8 rounded-md border border-border bg-secondary/40 p-3 text-xs text-muted-foreground">
+            <strong className="text-primary">Informational only — not legal advice.</strong> For binding advice on your situation, consult a qualified lawyer in the relevant jurisdiction.
+          </p>
+
+          {/* Related */}
+          <section className="mt-12">
+            <h3 className="text-lg font-bold text-primary">More guides</h3>
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              {related.map((a) => (
+                <Link
+                  key={a.slug}
+                  to="/knowledge/$slug"
+                  params={{ slug: a.slug }}
+                  className="rounded-xl border border-border bg-card p-4 shadow-card hover:border-accent/40 hover:shadow-elevated transition-all"
+                >
+                  <span className="text-xs font-semibold text-primary">{a.country}</span>
+                  <p className="mt-1 text-sm font-semibold text-primary leading-snug">
+                    {a.title}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          </section>
+        </article>
+      </main>
+      <SiteFooter />
+    </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <section className="mt-8">
+      <h2 className="text-xl font-bold text-primary">{title}</h2>
+      <div className="mt-3">{children}</div>
+    </section>
+  );
+}
+
+function Bullet({ children }: { children: React.ReactNode }) {
+  return (
+    <li className="flex gap-3">
+      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+      <span className="text-foreground leading-relaxed">{children}</span>
+    </li>
+  );
+}
