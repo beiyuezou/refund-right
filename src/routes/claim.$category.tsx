@@ -66,7 +66,7 @@ type DraftFile = {
 };
 
 function WizardPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { category } = useParams({ from: "/claim/$category" });
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
@@ -222,7 +222,10 @@ function WizardPage() {
 
       // Trigger AI analysis via edge function
       const { error: fnErr } = await supabase.functions.invoke("analyze-dispute", {
-        body: { dispute_id: dispute.id },
+        body: {
+          dispute_id: dispute.id,
+          language: i18n.language?.startsWith("zh") ? "zh" : "en",
+        },
       });
 
       if (fnErr) {

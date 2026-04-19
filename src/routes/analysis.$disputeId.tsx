@@ -12,6 +12,7 @@ import {
   RefreshCw,
   ShieldAlert,
   Sparkles,
+  Languages,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { SiteHeader, SiteFooter } from "@/components/SiteChrome";
@@ -62,13 +63,14 @@ type Analysis = {
 };
 
 function AnalysisPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { disputeId } = useParams({ from: "/analysis/$disputeId" });
   const { user, loading: authLoading } = useAuth();
   const [dispute, setDispute] = useState<Dispute | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [loading, setLoading] = useState(true);
   const [retrying, setRetrying] = useState(false);
+  const [retryLang, setRetryLang] = useState<"en" | "zh" | null>(null);
   const [showFullEmail, setShowFullEmail] = useState(false);
 
   const load = useCallback(async () => {
@@ -109,12 +111,15 @@ function AnalysisPage() {
     return () => clearInterval(id);
   }, [dispute, analysis, load]);
 
-  async function rerun() {
+  async function rerun(language?: "en" | "zh") {
     if (retrying || !dispute) return;
+    const lang =
+      language ?? (i18n.language?.startsWith("zh") ? "zh" : "en");
     setRetrying(true);
+    setRetryLang(lang);
     try {
       const { error } = await supabase.functions.invoke("analyze-dispute", {
-        body: { dispute_id: dispute.id },
+        body: { dispute_id: dispute.id, language: lang },
       });
       if (error) {
         toast.error(t("analysis.reanalyzeFailed"));
@@ -124,6 +129,7 @@ function AnalysisPage() {
       }
     } finally {
       setRetrying(false);
+      setRetryLang(null);
     }
   }
 
@@ -208,16 +214,52 @@ function AnalysisPage() {
             </div>
           </div>
           {analysis && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={rerun}
-              disabled={retrying}
-              className="gap-1.5"
-            >
-              {retrying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-              {t("analysis.reanalyze")}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => rerun("en")}
+                disabled={retrying}
+                className="gap-1.5"
+                title={t("analysis.regenInEnglish")}
+              >
+                {retrying && retryLang === "en" ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Languages className="h-3.5 w-3.5" />
+                )}
+                EN
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => rerun("zh")}
+                disabled={retrying}
+                className="gap-1.5"
+                title={t("analysis.regenInChinese")}
+              >
+                {retrying && retryLang === "zh" ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Languages className="h-3.5 w-3.5" />
+                )}
+                中文
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => rerun()}
+                disabled={retrying}
+                className="gap-1.5"
+              >
+                {retrying && retryLang === null ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-3.5 w-3.5" />
+                )}
+                {t("analysis.reanalyze")}
+              </Button>
+            </div>
           )}
         </div>
         <div className="mt-4 rounded-md bg-secondary/40 border border-border/60 p-3 text-sm text-muted-foreground italic">
@@ -240,7 +282,7 @@ function AnalysisPage() {
           <h2 className="text-lg font-semibold text-destructive">{t("analysis.failed")}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{t("analysis.failedSub")}</p>
           <Button
-            onClick={rerun}
+            onClick={() => rerun()}
             disabled={retrying}
             className="mt-4 bg-accent text-accent-foreground hover:opacity-95"
           >

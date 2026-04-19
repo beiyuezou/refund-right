@@ -10,7 +10,13 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-const SYSTEM_PROMPT = `You are a senior consumer-rights legal analyst specialising in Southeast Asian travel disputes.
+function buildSystemPrompt(language: "en" | "zh") {
+  const langClause =
+    language === "zh"
+      ? `LANGUAGE: Respond entirely in Simplified Chinese (简体中文). This includes the recommendation, every leverage point title and detail, and the entire draft_email (including the Subject line, salutation, body and sign-off). When citing statutes or regulators, give the Chinese translation followed by the official English/local name in parentheses, e.g. "泰国《消费者保护法》B.E. 2522 (Consumer Protection Act B.E. 2522)", "新加坡《公平交易法》(Consumer Protection (Fair Trading) Act, CPFTA)", "马来西亚航空消费者保护准则 (MACPC)". Keep brand names (Agoda, Booking.com, Trip.com, Klook, MAVCOM, OCPB, CASE) in their original Latin spelling. Use full-width punctuation for Chinese sentences but keep email addresses, URLs, dates and numbers in ASCII.`
+      : `LANGUAGE: Respond entirely in English. The recommendation, every leverage point and the full draft_email must be in English.`;
+
+  return `You are a senior consumer-rights legal analyst specialising in Southeast Asian travel disputes.
 Your job is to produce a sober, professional rights analysis that empowers a traveler to push back against booking platforms, hotels, airlines, and insurers.
 
 Jurisdictional anchors you may cite (do NOT fabricate statutes):
@@ -38,7 +44,10 @@ Risk levels:
 - "moderate" = good case but evidence gaps or jurisdictional ambiguity.
 - "weak" = limited evidence, lawful supplier conduct, or hostile jurisdiction.
 
+${langClause}
+
 You MUST respond by calling the produce_analysis function. Do not return prose.`;
+}
 
 interface AnalyzePayload {
   category: "hotel" | "flight" | "insurance";
@@ -79,10 +88,11 @@ Deno.serve(async (req) => {
     }
     const userId = userData.user.id;
 
-    const body = (await req.json()) as { dispute_id: string };
+    const body = (await req.json()) as { dispute_id: string; language?: string };
     if (!body?.dispute_id) {
       return json({ error: "dispute_id required" }, 400);
     }
+    const language: "en" | "zh" = body.language === "zh" ? "zh" : "en";
 
     // Load dispute (RLS ensures it's owned by caller)
     const { data: dispute, error: dErr } = await supabase
@@ -110,7 +120,8 @@ Deno.serve(async (req) => {
       currency: dispute.currency,
     };
 
-    const userPrompt = buildUserPrompt(payload);
+    const userPrompt = buildUserPrompt(payload, language);
+    const systemPrompt = buildSystemPrompt(language);
     const model = "google/gemini-3-flash-preview";
 
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -122,7 +133,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         model,
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
         tools: [
@@ -267,12 +278,17 @@ Deno.serve(async (req) => {
   }
 });
 
-function buildUserPrompt(p: AnalyzePayload) {
+function buildUserPrompt(p: AnalyzePayload, language: "en" | "zh") {
   const categoryLabel = {
     hotel: "Hotel issue (deposits, wrong booking, unjustified charges)",
     flight: "Flight disruption (delays, cancellation, missed connection)",
     insurance: "Insurance trap (denial, deceptive cancellation advice)",
   }[p.category];
+
+  const langReminder =
+    language === "zh"
+      ? `CRITICAL: All output (recommendation, leverage_points, draft_email including Subject line) MUST be in Simplified Chinese. Cite statutes as "中文翻译 (English original name)".`
+      : `CRITICAL: All output MUST be in English.`;
 
   return `Produce a structured analysis for the following traveler dispute.
 
@@ -285,6 +301,8 @@ Traveler's account:
 """
 ${p.story}
 """
+
+${langReminder}
 
 Remember: explicitly name any deceptive platform tactics in leverage_points, and ground your reasoning in the consumer-protection framework of ${p.country}. Respond by invoking produce_analysis.`;
 }
