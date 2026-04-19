@@ -112,11 +112,11 @@ function WizardPage() {
       toast.error("Please select where this happened.");
       return;
     }
-    setStep((s) => Math.min(3, (s + 1) as 1 | 2 | 3));
+    setStep((s) => (s < 3 ? ((s + 1) as 1 | 2 | 3) : s));
   }
 
   function prevStep() {
-    setStep((s) => Math.max(1, (s - 1) as 1 | 2 | 3));
+    setStep((s) => (s > 1 ? ((s - 1) as 1 | 2 | 3) : s));
   }
 
   function addFiles(list: FileList | null) {

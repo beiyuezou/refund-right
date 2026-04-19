@@ -9,9 +9,24 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as KnowledgeRouteImport } from './routes/knowledge'
+import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as KnowledgeSlugRouteImport } from './routes/knowledge.$slug'
+import { Route as ClaimCategoryRouteImport } from './routes/claim.$category'
+import { Route as AnalysisDisputeIdRouteImport } from './routes/analysis.$disputeId'
 
+const KnowledgeRoute = KnowledgeRouteImport.update({
+  id: '/knowledge',
+  path: '/knowledge',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
@@ -22,35 +37,105 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const KnowledgeSlugRoute = KnowledgeSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => KnowledgeRoute,
+} as any)
+const ClaimCategoryRoute = ClaimCategoryRouteImport.update({
+  id: '/claim/$category',
+  path: '/claim/$category',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AnalysisDisputeIdRoute = AnalysisDisputeIdRouteImport.update({
+  id: '/analysis/$disputeId',
+  path: '/analysis/$disputeId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/dashboard': typeof DashboardRoute
+  '/knowledge': typeof KnowledgeRouteWithChildren
+  '/analysis/$disputeId': typeof AnalysisDisputeIdRoute
+  '/claim/$category': typeof ClaimCategoryRoute
+  '/knowledge/$slug': typeof KnowledgeSlugRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/dashboard': typeof DashboardRoute
+  '/knowledge': typeof KnowledgeRouteWithChildren
+  '/analysis/$disputeId': typeof AnalysisDisputeIdRoute
+  '/claim/$category': typeof ClaimCategoryRoute
+  '/knowledge/$slug': typeof KnowledgeSlugRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/dashboard': typeof DashboardRoute
+  '/knowledge': typeof KnowledgeRouteWithChildren
+  '/analysis/$disputeId': typeof AnalysisDisputeIdRoute
+  '/claim/$category': typeof ClaimCategoryRoute
+  '/knowledge/$slug': typeof KnowledgeSlugRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/knowledge'
+    | '/analysis/$disputeId'
+    | '/claim/$category'
+    | '/knowledge/$slug'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth'
-  id: '__root__' | '/' | '/auth'
+  to:
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/knowledge'
+    | '/analysis/$disputeId'
+    | '/claim/$category'
+    | '/knowledge/$slug'
+  id:
+    | '__root__'
+    | '/'
+    | '/auth'
+    | '/dashboard'
+    | '/knowledge'
+    | '/analysis/$disputeId'
+    | '/claim/$category'
+    | '/knowledge/$slug'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
+  DashboardRoute: typeof DashboardRoute
+  KnowledgeRoute: typeof KnowledgeRouteWithChildren
+  AnalysisDisputeIdRoute: typeof AnalysisDisputeIdRoute
+  ClaimCategoryRoute: typeof ClaimCategoryRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/knowledge': {
+      id: '/knowledge'
+      path: '/knowledge'
+      fullPath: '/knowledge'
+      preLoaderRoute: typeof KnowledgeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth': {
       id: '/auth'
       path: '/auth'
@@ -65,12 +150,49 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/knowledge/$slug': {
+      id: '/knowledge/$slug'
+      path: '/$slug'
+      fullPath: '/knowledge/$slug'
+      preLoaderRoute: typeof KnowledgeSlugRouteImport
+      parentRoute: typeof KnowledgeRoute
+    }
+    '/claim/$category': {
+      id: '/claim/$category'
+      path: '/claim/$category'
+      fullPath: '/claim/$category'
+      preLoaderRoute: typeof ClaimCategoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/analysis/$disputeId': {
+      id: '/analysis/$disputeId'
+      path: '/analysis/$disputeId'
+      fullPath: '/analysis/$disputeId'
+      preLoaderRoute: typeof AnalysisDisputeIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
+
+interface KnowledgeRouteChildren {
+  KnowledgeSlugRoute: typeof KnowledgeSlugRoute
+}
+
+const KnowledgeRouteChildren: KnowledgeRouteChildren = {
+  KnowledgeSlugRoute: KnowledgeSlugRoute,
+}
+
+const KnowledgeRouteWithChildren = KnowledgeRoute._addFileChildren(
+  KnowledgeRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
+  DashboardRoute: DashboardRoute,
+  KnowledgeRoute: KnowledgeRouteWithChildren,
+  AnalysisDisputeIdRoute: AnalysisDisputeIdRoute,
+  ClaimCategoryRoute: ClaimCategoryRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
