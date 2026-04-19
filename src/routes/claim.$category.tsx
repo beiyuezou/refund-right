@@ -250,7 +250,7 @@ function WizardPage() {
     }
   }
 
-  const progress = useMemo(() => `${step} of 3`, [step]);
+  const progress = useMemo(() => t("wizard.stepOf", { current: step, total: 3 }), [step, t]);
 
   if (authLoading) {
     return (
@@ -275,17 +275,17 @@ function WizardPage() {
             </span>
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-primary leading-tight">
-                {cat.label}
+                {t(`categories.${category as CategoryKey}.label`)}
               </h1>
-              <p className="text-sm text-muted-foreground">{cat.tagline}</p>
+              <p className="text-sm text-muted-foreground">{t(`categories.${category as CategoryKey}.tagline`)}</p>
             </div>
           </div>
 
           {/* Progress */}
           <div className="mb-8">
             <div className="flex justify-between mb-2 text-xs font-medium text-muted-foreground">
-              <span>Step {progress}</span>
-              <span>{Math.round((step / 3) * 100)}% complete</span>
+              <span>{progress}</span>
+              <span>{t("wizard.percentComplete", { pct: Math.round((step / 3) * 100) })}</span>
             </div>
             <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
               <div
@@ -299,25 +299,23 @@ function WizardPage() {
             {step === 1 && (
               <div className="space-y-5">
                 <div>
-                  <h2 className="text-lg font-semibold text-primary">What happened?</h2>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Tell us in your own words. Include dates, amounts, names of platforms, and what they told you.
-                  </p>
+                  <h2 className="text-lg font-semibold text-primary">{t("wizard.s1Title")}</h2>
+                  <p className="text-sm text-muted-foreground mt-1">{t("wizard.s1Sub")}</p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="story" className="sr-only">Your story</Label>
+                  <Label htmlFor="story" className="sr-only">{t("wizard.s1Title")}</Label>
                   <Textarea
                     id="story"
                     value={story}
                     onChange={(e) => setStory(e.target.value)}
-                    placeholder="On 12 March I checked into the Bayview Hotel in Phuket. They held a 5,000 THB cash deposit. At checkout they refused to return it, claiming a stain on the bedsheet, but they couldn't show me a photo…"
+                    placeholder={cat.examples[0]}
                     className="min-h-[220px] text-base leading-relaxed"
                   />
                   <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>{story.trim().length} / 50 minimum</span>
+                    <span>{t("wizard.s1Min", { count: story.trim().length })}</span>
                     {storyValid && (
                       <span className="inline-flex items-center gap-1 text-accent font-medium">
-                        <Check className="h-3.5 w-3.5" /> Looks good
+                        <Check className="h-3.5 w-3.5" /> {t("wizard.s1Good")}
                       </span>
                     )}
                   </div>
@@ -325,7 +323,7 @@ function WizardPage() {
 
                 <details className="rounded-lg border border-border bg-secondary/40 p-3 text-sm">
                   <summary className="cursor-pointer font-medium text-primary">
-                    Need a prompt? Tap for examples
+                    {t("wizard.s1Prompt")}
                   </summary>
                   <ul className="mt-2 space-y-1.5 text-muted-foreground list-disc pl-5">
                     {cat.examples.map((ex) => (
@@ -339,37 +337,35 @@ function WizardPage() {
             {step === 2 && (
               <div className="space-y-5">
                 <div>
-                  <h2 className="text-lg font-semibold text-primary">Where did this happen?</h2>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Jurisdiction shapes which laws and regulators apply.
-                  </p>
+                  <h2 className="text-lg font-semibold text-primary">{t("wizard.s2Title")}</h2>
+                  <p className="text-sm text-muted-foreground mt-1">{t("wizard.s2Sub")}</p>
                 </div>
                 <div className="space-y-1.5">
-                  <Label htmlFor="country">Country</Label>
+                  <Label htmlFor="country">{t("wizard.country")}</Label>
                   <Select value={country} onValueChange={setCountry}>
                     <SelectTrigger id="country" className="h-11">
-                      <SelectValue placeholder="Select a country" />
+                      <SelectValue placeholder={t("wizard.selectCountry")} />
                     </SelectTrigger>
                     <SelectContent>
                       {COUNTRIES.map((c) => (
-                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                        <SelectItem key={c} value={c}>{t(`countries.${c}`, { defaultValue: c })}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-1.5">
-                    <Label htmlFor="city">City (optional)</Label>
+                    <Label htmlFor="city">{t("wizard.cityOpt")}</Label>
                     <Input
                       id="city"
                       value={city}
                       onChange={(e) => setCity(e.target.value)}
-                      placeholder="e.g. Phuket"
+                      placeholder={t("wizard.cityPh")}
                       className="h-11"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="date">Incident date (optional)</Label>
+                    <Label htmlFor="date">{t("wizard.dateOpt")}</Label>
                     <Input
                       id="date"
                       type="date"
@@ -381,19 +377,19 @@ function WizardPage() {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-[2fr_1fr]">
                   <div className="space-y-1.5">
-                    <Label htmlFor="amount">Amount in dispute (optional)</Label>
+                    <Label htmlFor="amount">{t("wizard.amountOpt")}</Label>
                     <Input
                       id="amount"
                       type="number"
                       inputMode="decimal"
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
-                      placeholder="e.g. 5000"
+                      placeholder="5000"
                       className="h-11"
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="currency">Currency</Label>
+                    <Label htmlFor="currency">{t("wizard.currency")}</Label>
                     <Input
                       id="currency"
                       value={currency}
@@ -409,20 +405,14 @@ function WizardPage() {
             {step === 3 && (
               <div className="space-y-5">
                 <div>
-                  <h2 className="text-lg font-semibold text-primary">Evidence</h2>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Upload screenshots, receipts, or PDFs (max 10 files, 10 MB each). Stored privately.
-                  </p>
+                  <h2 className="text-lg font-semibold text-primary">{t("wizard.s3Title")}</h2>
+                  <p className="text-sm text-muted-foreground mt-1">{t("wizard.s3Sub")}</p>
                 </div>
 
                 <label className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border bg-secondary/30 p-8 text-center cursor-pointer hover:border-accent/60 hover:bg-secondary/60 transition-colors">
                   <FileUp className="h-7 w-7 text-accent" />
-                  <span className="text-sm font-medium text-primary">
-                    Tap to add files
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    Images, PDFs · up to 10 MB each
-                  </span>
+                  <span className="text-sm font-medium text-primary">{t("wizard.tapToAdd")}</span>
+                  <span className="text-xs text-muted-foreground">{t("wizard.fileTypes")}</span>
                   <input
                     type="file"
                     multiple
@@ -459,7 +449,7 @@ function WizardPage() {
                 )}
 
                 <p className="text-xs text-muted-foreground rounded-md bg-secondary/40 border border-border p-3">
-                  Skipping evidence is OK — the AI can still analyze your story. You can add files later from your dashboard.
+                  {t("wizard.skipOk")}
                 </p>
               </div>
             )}
