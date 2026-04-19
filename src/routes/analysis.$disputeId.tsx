@@ -12,6 +12,7 @@ import {
   RefreshCw,
   ShieldAlert,
   Sparkles,
+  Languages,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { SiteHeader, SiteFooter } from "@/components/SiteChrome";
@@ -62,13 +63,14 @@ type Analysis = {
 };
 
 function AnalysisPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { disputeId } = useParams({ from: "/analysis/$disputeId" });
   const { user, loading: authLoading } = useAuth();
   const [dispute, setDispute] = useState<Dispute | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [loading, setLoading] = useState(true);
   const [retrying, setRetrying] = useState(false);
+  const [retryLang, setRetryLang] = useState<"en" | "zh" | null>(null);
   const [showFullEmail, setShowFullEmail] = useState(false);
 
   const load = useCallback(async () => {
@@ -109,12 +111,15 @@ function AnalysisPage() {
     return () => clearInterval(id);
   }, [dispute, analysis, load]);
 
-  async function rerun() {
+  async function rerun(language?: "en" | "zh") {
     if (retrying || !dispute) return;
+    const lang =
+      language ?? (i18n.language?.startsWith("zh") ? "zh" : "en");
     setRetrying(true);
+    setRetryLang(lang);
     try {
       const { error } = await supabase.functions.invoke("analyze-dispute", {
-        body: { dispute_id: dispute.id },
+        body: { dispute_id: dispute.id, language: lang },
       });
       if (error) {
         toast.error(t("analysis.reanalyzeFailed"));
@@ -124,6 +129,7 @@ function AnalysisPage() {
       }
     } finally {
       setRetrying(false);
+      setRetryLang(null);
     }
   }
 
