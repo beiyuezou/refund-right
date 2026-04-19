@@ -14,7 +14,163 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      dispute_analyses: {
+        Row: {
+          confidence: number
+          created_at: string
+          dispute_id: string
+          draft_email: string
+          id: string
+          leverage_points: Json
+          model: string
+          recommendation: string
+          risk_level: string
+          user_id: string
+        }
+        Insert: {
+          confidence: number
+          created_at?: string
+          dispute_id: string
+          draft_email: string
+          id?: string
+          leverage_points?: Json
+          model: string
+          recommendation: string
+          risk_level: string
+          user_id: string
+        }
+        Update: {
+          confidence?: number
+          created_at?: string
+          dispute_id?: string
+          draft_email?: string
+          id?: string
+          leverage_points?: Json
+          model?: string
+          recommendation?: string
+          risk_level?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispute_analyses_dispute_id_fkey"
+            columns: ["dispute_id"]
+            isOneToOne: false
+            referencedRelation: "disputes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      dispute_evidence: {
+        Row: {
+          created_at: string
+          dispute_id: string
+          file_name: string
+          id: string
+          mime_type: string | null
+          size_bytes: number | null
+          storage_path: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dispute_id: string
+          file_name: string
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          storage_path: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dispute_id?: string
+          file_name?: string
+          id?: string
+          mime_type?: string | null
+          size_bytes?: number | null
+          storage_path?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispute_evidence_dispute_id_fkey"
+            columns: ["dispute_id"]
+            isOneToOne: false
+            referencedRelation: "disputes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      disputes: {
+        Row: {
+          amount: number | null
+          category: string
+          city: string | null
+          country: string
+          created_at: string
+          currency: string | null
+          id: string
+          incident_date: string | null
+          status: string
+          story: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount?: number | null
+          category: string
+          city?: string | null
+          country: string
+          created_at?: string
+          currency?: string | null
+          id?: string
+          incident_date?: string | null
+          status?: string
+          story: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number | null
+          category?: string
+          city?: string | null
+          country?: string
+          created_at?: string
+          currency?: string | null
+          id?: string
+          incident_date?: string | null
+          status?: string
+          story?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          country: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          country?: string | null
+          created_at?: string
+          display_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          country?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
