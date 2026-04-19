@@ -1,6 +1,7 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
-import LanguageDetector from "i18next-browser-languagedetector";
+
+const LANG_KEY = "rr_lang";
 
 const en = {
   nav: {
@@ -401,19 +402,39 @@ const zh: typeof en = {
 
 if (!i18n.isInitialized) {
   i18n
-    .use(LanguageDetector)
     .use(initReactI18next)
     .init({
       resources: { en: { translation: en }, zh: { translation: zh } },
+      lng: "en", // SSR-stable initial language; client syncs after mount
       fallbackLng: "en",
       supportedLngs: ["en", "zh"],
       interpolation: { escapeValue: false },
-      detection: {
-        order: ["localStorage", "navigator"],
-        lookupLocalStorage: "rr_lang",
-        caches: ["localStorage"],
-      },
+      react: { useSuspense: false },
     });
+}
+
+// Client-only: sync to user preference after hydration to avoid SSR mismatch.
+if (typeof window !== "undefined") {
+  const stored = window.localStorage.getItem(LANG_KEY);
+  const initial =
+    stored === "en" || stored === "zh"
+      ? stored
+      : (navigator.language || "en").toLowerCase().startsWith("zh")
+        ? "zh"
+        : "en";
+  // Defer until after hydration so server-rendered "en" matches first paint.
+  if (initial !== i18n.language) {
+    queueMicrotask(() => {
+      void i18n.changeLanguage(initial);
+    });
+  }
+  i18n.on("languageChanged", (lng) => {
+    try {
+      window.localStorage.setItem(LANG_KEY, lng);
+    } catch {
+      /* ignore */
+    }
+  });
 }
 
 export default i18n;
