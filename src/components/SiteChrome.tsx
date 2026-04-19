@@ -1,10 +1,68 @@
 import { Link } from "@tanstack/react-router";
-import { Shield } from "lucide-react";
+import { Shield, Moon, Sun, Languages } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useAuth, signOut } from "@/lib/auth";
+import { useTheme } from "@/lib/theme";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+function LanguageSwitcher() {
+  const { i18n, t } = useTranslation();
+  const current = i18n.language?.startsWith("zh") ? "zh" : "en";
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-9 w-9 text-muted-foreground hover:text-primary"
+          aria-label={t("nav.language")}
+        >
+          <Languages className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-32">
+        <DropdownMenuItem
+          onClick={() => i18n.changeLanguage("en")}
+          className={current === "en" ? "font-semibold text-accent" : ""}
+        >
+          English
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => i18n.changeLanguage("zh")}
+          className={current === "zh" ? "font-semibold text-accent" : ""}
+        >
+          中文
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function ThemeToggle() {
+  const { theme, toggle } = useTheme();
+  const { t } = useTranslation();
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={toggle}
+      className="h-9 w-9 text-muted-foreground hover:text-primary"
+      aria-label={theme === "dark" ? t("nav.light") : t("nav.dark")}
+    >
+      {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+    </Button>
+  );
+}
 
 export function SiteHeader() {
   const { user } = useAuth();
+  const { t } = useTranslation();
 
   return (
     <header className="sticky top-0 z-40 w-full border-b border-border/60 bg-background/85 backdrop-blur supports-[backdrop-filter]:bg-background/70">
@@ -18,12 +76,12 @@ export function SiteHeader() {
           </span>
         </Link>
 
-        <nav className="flex items-center gap-1 sm:gap-3">
+        <nav className="flex items-center gap-1 sm:gap-2">
           <Link
             to="/knowledge"
             className="hidden sm:inline-flex h-9 items-center px-3 text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
           >
-            Knowledge
+            {t("nav.knowledge")}
           </Link>
           {user ? (
             <>
@@ -31,7 +89,7 @@ export function SiteHeader() {
                 to="/dashboard"
                 className="hidden sm:inline-flex h-9 items-center px-3 text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
               >
-                My Disputes
+                {t("nav.myDisputes")}
               </Link>
               <Button
                 variant="ghost"
@@ -39,7 +97,7 @@ export function SiteHeader() {
                 onClick={() => signOut()}
                 className="hidden sm:inline-flex"
               >
-                Sign out
+                {t("nav.signOut")}
               </Button>
             </>
           ) : (
@@ -47,15 +105,17 @@ export function SiteHeader() {
               to="/auth"
               className="hidden sm:inline-flex h-9 items-center px-3 text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
             >
-              Sign in
+              {t("nav.signIn")}
             </Link>
           )}
+          <LanguageSwitcher />
+          <ThemeToggle />
           <Link
             to="/claim/$category"
             params={{ category: "hotel" }}
-            className="inline-flex h-9 items-center justify-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-foreground shadow-sm transition-all hover:opacity-95 hover:shadow"
+            className="ml-1 inline-flex h-9 items-center justify-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-foreground shadow-sm transition-all hover:opacity-95 hover:shadow"
           >
-            Report Dispute
+            {t("nav.reportDispute")}
           </Link>
         </nav>
       </div>
@@ -64,6 +124,7 @@ export function SiteHeader() {
 }
 
 export function SiteFooter() {
+  const { t } = useTranslation();
   return (
     <footer className="border-t border-border/60 bg-background mt-20">
       <div className="mx-auto max-w-6xl px-4 sm:px-6 py-10 grid gap-8 md:grid-cols-3">
@@ -76,31 +137,26 @@ export function SiteFooter() {
               Refund<span className="text-accent">Right</span>
             </span>
           </div>
-          <p className="mt-3 text-sm text-muted-foreground max-w-xs">
-            AI-powered legal assistant for SE Asia travel disputes. Built for travelers, not platforms.
-          </p>
+          <p className="mt-3 text-sm text-muted-foreground max-w-xs">{t("footer.tagline")}</p>
         </div>
         <div className="text-sm">
-          <h4 className="font-semibold text-primary mb-3">Tools</h4>
+          <h4 className="font-semibold text-primary mb-3">{t("footer.tools")}</h4>
           <ul className="space-y-2 text-muted-foreground">
-            <li><Link to="/claim/$category" params={{ category: "hotel" }} className="hover:text-primary">Hotel disputes</Link></li>
-            <li><Link to="/claim/$category" params={{ category: "flight" }} className="hover:text-primary">Flight disruptions</Link></li>
-            <li><Link to="/claim/$category" params={{ category: "insurance" }} className="hover:text-primary">Insurance traps</Link></li>
-            <li><Link to="/knowledge" className="hover:text-primary">Knowledge base</Link></li>
+            <li><Link to="/claim/$category" params={{ category: "hotel" }} className="hover:text-primary">{t("footer.hotel")}</Link></li>
+            <li><Link to="/claim/$category" params={{ category: "flight" }} className="hover:text-primary">{t("footer.flight")}</Link></li>
+            <li><Link to="/claim/$category" params={{ category: "insurance" }} className="hover:text-primary">{t("footer.insurance")}</Link></li>
+            <li><Link to="/knowledge" className="hover:text-primary">{t("footer.knowledgeBase")}</Link></li>
           </ul>
         </div>
         <div className="text-sm">
-          <h4 className="font-semibold text-primary mb-3">Important</h4>
-          <p className="text-muted-foreground leading-relaxed">
-            RefundRight provides general information only and does not constitute legal advice.
-            For binding advice on your specific situation, consult a qualified lawyer in the relevant jurisdiction.
-          </p>
+          <h4 className="font-semibold text-primary mb-3">{t("footer.important")}</h4>
+          <p className="text-muted-foreground leading-relaxed">{t("footer.disclaimer")}</p>
         </div>
       </div>
       <div className="border-t border-border/60">
         <div className="mx-auto max-w-6xl px-4 sm:px-6 py-4 text-xs text-muted-foreground flex flex-wrap items-center justify-between gap-2">
-          <span>© {new Date().getFullYear()} RefundRight</span>
-          <span>Informational only · Not legal advice</span>
+          <span>{t("footer.copyright", { year: new Date().getFullYear() })}</span>
+          <span>{t("footer.notLegal")}</span>
         </div>
       </div>
     </footer>
