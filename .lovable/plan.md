@@ -1,45 +1,37 @@
-## End-to-end test plan: language switcher + dark mode
 
-I'll drive the live preview with the browser tool across desktop (1280×720) and mobile (390×844) viewports, exercising every major route while toggling EN ↔ 中文 and Light ↔ Dark.
+## Premium redesign of `/knowledge` + header polish
 
-### Routes to cover
+### Scope
 
-1. `/` — Home (hero, category cards, how-it-works, knowledge teaser, footer)
-2. `/knowledge` — Index grid
-3. `/knowledge/thailand-hotel-deposits` — Article detail (current route)
-4. `/auth` — Sign in / sign up tabs
-5. `/dashboard` — Auth-gated list (requires login)
-6. `/claim/hotel` — Wizard steps 1, 2, 3
-7. `/analysis/$disputeId` — Results page (requires an existing dispute)
+1. **New color palette** (in `src/styles.css`) — deep soft teal as primary, cool slate surfaces, warm brushed gold as CTA accent. Tokens updated: `--primary`, `--primary-soft`, `--accent` (gold), `--accent-soft`, plus dark-mode equivalents.
+2. **Typography** — load Poppins via Google Fonts in `__root.tsx`, set as `--font-display`; keep Inter for body with improved line-height. Heading tracking tightened.
+3. **Knowledge hero** — condense the subtext to one impactful sentence (new i18n key `knowledge.subShort`), enlarge H1 to `text-5xl sm:text-6xl`, drop the badge clutter to a slim uppercase eyebrow, more vertical breathing room.
+4. **Article tiles** — `rounded-3xl`, `p-8`, `gap-6 md:gap-8`, soft border + subtle shadow that deepens on hover, lift animation. Topic line-art icon (lucide) per article in a soft circle: `Hotel` (deposits), `PlaneTakeoff` (delays), `ShieldAlert` (insurance), `Bus` (transport). Country pill restyled with subtle teal background, category in muted small-caps.
+5. **"Read guide" link** — gold color, arrow slides right on hover (`group-hover:translate-x-1`).
+6. **New 4th article** — add `thailand-transport-overcharges` to `ARTICLES` in `src/lib/knowledge.ts`: covers taxi meter refusal, airport scams, Grab disputes, Thai Consumer Protection Act escalation. Full markdown body, summary, country=Thailand, category=transport.
+7. **Header polish** (`SiteChrome.tsx`) — rename "My disputes" → "Disputes", add a small circular avatar (lucide `User` in a soft slate circle) next to the existing toggles when signed in. Tightened spacing.
+8. **Quietly fix the SSR hydration mismatch** on the nav link (server rendered "Knowledge", client rendered "知识库") by ensuring i18n language is only applied after mount, matching the existing pattern in `i18n.ts`.
 
-### What I'll verify on each
+### Out of scope
+- `/knowledge/$slug` detail page styling (only data addition for the new article).
+- Dashboard / wizard / analysis page restyling.
+- Mobile hamburger menu (separate task).
 
-- **i18n**: All visible strings switch between EN and 中文 — no leftover English on Chinese, no missing-key fallbacks like `nav.language`. Header, body, buttons, form labels, validation, empty states, footer.
-- **Theme**: `.dark` class applies on `<html>`, surfaces/text/borders all respond, no hard-coded white/navy that breaks contrast in the opposite mode. Risk badges, gauge, file-upload zone, dropdowns, dialog overlays.
-- **Persistence**: Reload after toggling — `rr_theme` and `i18nextLng` survive in localStorage.
-- **Mobile (390×844)**: Header still fits both toggles + CTA; nav items hidden on `sm:` breakpoint don't strand the user (Knowledge / Sign in / My disputes are `hidden sm:inline-flex`, so on mobile only the icon buttons + "Report Dispute" show — I'll flag this as a gap).
-- **Cross-page**: Language and theme stick when navigating between routes (no flash, no reset).
+### Defaults I'm assuming (tell me to change any)
 
-### Auth-gated routes
+| Decision | Default |
+|---|---|
+| Palette scope | **App-wide** — keeps every page consistent with the premium direction |
+| New article topic | **Thailand: taxi & Grab overcharges** — strongest match to existing SE-Asia traveler focus |
+| Display font | **Poppins headings + Inter body** — geometric premium for titles, proven readable body |
+| Avatar behavior | **Static circle with `User` icon** for now — non-functional placeholder, no dropdown |
 
-- `/dashboard` and `/analysis/$disputeId` need a logged-in session. I'll either reuse an existing preview session if one is active, or stop and ask you to sign in (per the auth rule — I won't fill credentials without approval).
-- For `/analysis/$disputeId`, I need a real dispute ID. If your account has none, I'll submit a short test dispute via the wizard to generate one (this calls the real AI — let me know if you'd rather I skip).
+If any of these defaults are wrong, reply with the change before approving and I'll adjust before implementing.
 
-### Deliverables
-
-A concise report per route × viewport with: ✅ pass / ⚠️ issue (with screenshot + exact string or selector) / ❌ broken. Any bugs found I'll list but **not fix in this turn** — you'll approve fixes separately.
-
-- **AI 响应一致性测试**
-- **优化建议：** 检查中文翻译是否符合法律语境。例如：  
-• “Report Dispute” 翻译成 **“提交维权申请”** 或 **“争议申诉”** 比“报告纠纷”更好。  
-• “Legal advice” 翻译成 **“法律意见/建议”**
-
-### Two quick questions before I start
-
-1. **Auth for gated routes** — are you already signed in to the preview, or should I (a) skip `/dashboard` + `/analysis`, (b) wait while you sign in, or (c) sign up a throwaway test account with your approval?
-
-**选 (c)：Sign up a throwaway test account.**
-
-**2、Generating a test dispute** — OK to submit a real test claim through the wizard so I can exercise `/analysis/$disputeId`? This triggers the AI edge function (small Lovable AI cost). If not, I'll cover the analysis page visually only via the dashboard link if one exists.
-
-**OK, DO IT.**
+### Files I'll touch
+- `src/styles.css` — new color tokens + dark variants
+- `src/routes/__root.tsx` — Poppins font link
+- `src/routes/knowledge.tsx` — hero + tiles redesign with topic icons
+- `src/lib/knowledge.ts` — add 4th article (transport)
+- `src/lib/i18n.ts` — `knowledge.subShort`, transport country/category strings, new "Disputes" label, fix mount-only language application
+- `src/components/SiteChrome.tsx` — rename link, add avatar placeholder
