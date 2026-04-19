@@ -29,6 +29,7 @@ import {
 import { CATEGORIES, COUNTRIES, type CategoryKey } from "@/lib/categories";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
+import { useTranslation } from "react-i18next";
 
 const categorySchema = z.object({
   category: z.enum(["hotel", "flight", "insurance"]),
@@ -65,6 +66,7 @@ type DraftFile = {
 };
 
 function WizardPage() {
+  const { t } = useTranslation();
   const { category } = useParams({ from: "/claim/$category" });
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
@@ -105,11 +107,11 @@ function WizardPage() {
 
   function nextStep() {
     if (step === 1 && !storyValid) {
-      toast.error("Please describe what happened in at least 50 characters.");
+      toast.error(t("wizard.errMin"));
       return;
     }
     if (step === 2 && !locationValid) {
-      toast.error("Please select where this happened.");
+      toast.error(t("wizard.errCountry"));
       return;
     }
     setStep((s) => (s < 3 ? ((s + 1) as 1 | 2 | 3) : s));
@@ -124,11 +126,11 @@ function WizardPage() {
     const next: DraftFile[] = [...files];
     for (const f of Array.from(list)) {
       if (next.length >= MAX_FILES) {
-        toast.error(`Max ${MAX_FILES} files.`);
+        toast.error(t("wizard.errMaxFiles", { n: MAX_FILES }));
         break;
       }
       if (f.size > MAX_FILE_BYTES) {
-        toast.error(`${f.name} is larger than 10 MB.`);
+        toast.error(t("wizard.errFileSize", { name: f.name }));
         continue;
       }
       next.push({ id: crypto.randomUUID(), file: f });
@@ -139,7 +141,7 @@ function WizardPage() {
   async function submit() {
     if (submitting) return;
     if (!storyValid || !locationValid) {
-      toast.error("Please complete the previous steps.");
+      toast.error(t("wizard.errPrev"));
       return;
     }
 
@@ -157,7 +159,7 @@ function WizardPage() {
           currency,
         }),
       );
-      toast.message("Sign in to save your dispute and get analysis.");
+      toast.message(t("wizard.signinPrompt"));
       navigate({
         to: "/auth",
         search: { redirect: `/claim/${category}`, draft: "1" },
@@ -185,7 +187,7 @@ function WizardPage() {
 
       if (dErr || !dispute) {
         console.error(dErr);
-        toast.error("Could not save dispute. Please try again.");
+        toast.error(t("wizard.errSave"));
         return;
       }
 
@@ -226,7 +228,7 @@ function WizardPage() {
       if (fnErr) {
         console.error(fnErr);
         const ctx: any = (fnErr as any).context;
-        let msg = "Analysis failed. Open your dispute to retry.";
+        let msg = t("wizard.errAnalysis");
         try {
           if (ctx?.body) {
             const txt =
