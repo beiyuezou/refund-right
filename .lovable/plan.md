@@ -1,87 +1,45 @@
-# RefundRight — Build Plan
+## End-to-end test plan: language switcher + dark mode
 
-A premium-feeling, mobile-first legal-tech tool for SE Asia travelers, with real AI analysis, accounts, and a focused SE Asia knowledge base.
+I'll drive the live preview with the browser tool across desktop (1280×720) and mobile (390×844) viewports, exercising every major route while toggling EN ↔ 中文 and Light ↔ Dark.
 
-## Design system
+### Routes to cover
 
-- **Palette**: Navy `#1E293B` (primary), Action Orange `#F97316` (accent/CTA), white surfaces, slate grays for text, soft red/amber/green for risk levels.
-- **Typography**: Clean sans-serif (Inter), generous spacing, professional/legal tone — no playful elements.
-- **Layout**: Mobile-first, max-width containers, sticky header, large tap targets, subtle shadows and rounded-xl cards.
+1. `/` — Home (hero, category cards, how-it-works, knowledge teaser, footer)
+2. `/knowledge` — Index grid
+3. `/knowledge/thailand-hotel-deposits` — Article detail (current route)
+4. `/auth` — Sign in / sign up tabs
+5. `/dashboard` — Auth-gated list (requires login)
+6. `/claim/hotel` — Wizard steps 1, 2, 3
+7. `/analysis/$disputeId` — Results page (requires an existing dispute)
 
-## Pages & routes
+### What I'll verify on each
 
-- `/` — Home (header, hero, dispute categories, how it works, trust strip, footer)
-- `/claim/$category` — Claim Wizard (3 steps, progress bar, back/next navigation)
-- `/analysis/$disputeId` — AI Strategy Dashboard (risk gauge, recommendation, draft complaint)
-- `/dashboard` — User's past disputes (auth required)
-- `/knowledge` — SE Asia knowledge base index
-- `/knowledge/$slug` — Individual articles (Thai hotel deposits, Singapore booking disputes, Malaysian flight delays, etc.)
-- `/auth` — Sign in / sign up (email + password)
+- **i18n**: All visible strings switch between EN and 中文 — no leftover English on Chinese, no missing-key fallbacks like `nav.language`. Header, body, buttons, form labels, validation, empty states, footer.
+- **Theme**: `.dark` class applies on `<html>`, surfaces/text/borders all respond, no hard-coded white/navy that breaks contrast in the opposite mode. Risk badges, gauge, file-upload zone, dropdowns, dialog overlays.
+- **Persistence**: Reload after toggling — `rr_theme` and `i18nextLng` survive in localStorage.
+- **Mobile (390×844)**: Header still fits both toggles + CTA; nav items hidden on `sm:` breakpoint don't strand the user (Knowledge / Sign in / My disputes are `hidden sm:inline-flex`, so on mobile only the icon buttons + "Report Dispute" show — I'll flag this as a gap).
+- **Cross-page**: Language and theme stick when navigating between routes (no flash, no reset).
 
-## Home page
+### Auth-gated routes
 
-1. **Header**: "RefundRight" wordmark with shield icon, nav (Knowledge, Sign in), prominent orange "Report Dispute" button.
-2. **Hero**: Headline "Don't let them keep your money.", subtext, primary CTA, secondary "How it works" link, trust badges row ("AI-powered • SE Asia focused • Free to start").
-3. **Dispute Categories Grid**: 3 cards with icons — Hotel Issues, Flight Disruptions, Insurance Traps. Each card → starts wizard for that category.
-4. **How it works**: 3-step strip (Tell us → AI analyzes → Get your draft complaint).
-5. **Knowledge teaser**: 3 featured SE Asia articles linking to `/knowledge`.
-6. **Footer**: Disclaimer ("Not legal advice"), links.
+- `/dashboard` and `/analysis/$disputeId` need a logged-in session. I'll either reuse an existing preview session if one is active, or stop and ask you to sign in (per the auth rule — I won't fill credentials without approval).
+- For `/analysis/$disputeId`, I need a real dispute ID. If your account has none, I'll submit a short test dispute via the wizard to generate one (this calls the real AI — let me know if you'd rather I skip).
 
-## Claim Wizard (3 steps)
+### Deliverables
 
-- Progress bar showing step 1/2/3, back button, validated inputs.
-- **Step 1 — What happened**: Long-form textarea with character count (min 50 chars), helper prompts.
-- **Step 2 — Where**: Country dropdown (Thailand, Singapore, Malaysia, Indonesia, Vietnam, Philippines, Cambodia, Laos), optional city, incident date.
-- **Step 3 — Evidence**: Real file upload to Lovable Cloud Storage (images, PDFs, max 10 files, drag-and-drop), file list with remove button, optional amount in dispute + currency.
-- **Submit**: If logged out → prompt to sign in/up (story preserved), then create dispute and trigger AI analysis.
+A concise report per route × viewport with: ✅ pass / ⚠️ issue (with screenshot + exact string or selector) / ❌ broken. Any bugs found I'll list but **not fix in this turn** — you'll approve fixes separately.
 
-## AI Strategy Dashboard
+- **AI 响应一致性测试**
+- **优化建议：** 检查中文翻译是否符合法律语境。例如：  
+• “Report Dispute” 翻译成 **“提交维权申请”** 或 **“争议申诉”** 比“报告纠纷”更好。  
+• “Legal advice” 翻译成 **“法律意见/建议”**
 
-- Top: dispute summary chip (category, country, date).
-- **Risk Level Gauge**: Semicircle gauge with Green (Strong case) / Yellow (Moderate) / Red (Weak), short label and confidence %.
-- **AI Recommendation**: Professional, legal-toned analysis — applicable consumer rights, jurisdiction notes, suggested actions, escalation path (platform → consumer protection authority → small claims).
-- **Key Leverage Points**: Bullet list of strongest arguments extracted from the user's story.
-- **Draft Complaint**: Button generates a formal email template (subject, recipient placeholders, body referencing user's facts, requested remedy, deadline). Copy-to-clipboard and download .txt.
-- **Save / share**: Auto-saved to user's account; shareable internal link.
-- Re-analyze button if the user adds more details.
+### Two quick questions before I start
 
-## Accounts (Lovable Cloud)
+1. **Auth for gated routes** — are you already signed in to the preview, or should I (a) skip `/dashboard` + `/analysis`, (b) wait while you sign in, or (c) sign up a throwaway test account with your approval?
 
-- Email + password sign up/in, no email confirmation friction (auto-confirm for testing).
-- `profiles` table (id, display_name, country).
-- `disputes` table (id, user_id, category, country, city, incident_date, story, amount, currency, status, created_at).
-- `dispute_evidence` table (id, dispute_id, storage_path, file_name, mime_type).
-- `dispute_analyses` table (id, dispute_id, risk_level, confidence, recommendation, leverage_points jsonb, draft_email, model, created_at).
-- RLS: users can only read/write their own rows; storage bucket private with per-user policies.
-- `/dashboard`: list of disputes with status, risk badge, link to analysis.
+**选 (c)：Sign up a throwaway test account.**
 
-## AI integration
+**2、Generating a test dispute** — OK to submit a real test claim through the wizard so I can exercise `/analysis/$disputeId`? This triggers the AI edge function (small Lovable AI cost). If not, I'll cover the analysis page visually only via the dashboard link if one exists.
 
-- Server function calls Lovable AI Gateway (`google/gemini-3-flash-preview`).
-- Single structured-output call using tool-calling to return: `risk_level`, `confidence`, `recommendation`, `leverage_points[]`, `draft_email`.
-- System prompt grounded in SE Asia consumer protection context (Thailand CPA, Singapore Lemon Law/CASE, Malaysia TCPA, etc.) and instructed to stay professional, cite jurisdiction, never fabricate statutes.
-- Handles 429 / 402 errors with friendly toasts.
-
-## Knowledge base (SE Asia focused)
-
-- `/knowledge`: Grid of articles grouped by country and topic.
-- Seed ~6 articles authored as static MDX-style content:
-  - Thailand: Recovering hotel security deposits
-  - Thailand: Tour operator cancellations and the CPA
-  - Singapore: Hotel booking disputes and CASE escalation
-  - Singapore: Lemon Law applied to travel services
-  - Malaysia: Flight delay compensation under MAVCOM
-  - Region-wide: When travel insurance can legally deny your claim
-- Each article: country chip, last-updated date, structured sections (Your rights / Steps to take / Who to escalate to / Template phrases), CTA to start a claim.
-
-## Trust & compliance touches
-
-- Persistent "Informational only, not legal advice" disclaimer in footer and on analysis page.
-- Loading states with skeletons, empty states, error boundaries on every route.
-- Mobile-first: bottom-anchored CTAs on wizard, large touch targets, safe-area padding.
-
-&nbsp;
-
-**Ensure the AI specifically identifies 'Deceptive platform behavior'—such as when a booking site pressures a traveler to cancel an active insurance policy or refuses a refund for a clearly documented airline-caused delay. The AI should call out these specific tactics in the 'Leverage Points' section to empower the user. Go ahead and build!"**
-
-After approval I'll set up Lovable Cloud (auth + DB + storage), build the routes and wizard, wire the AI analysis server function, and seed the knowledge base.
+**OK, DO IT.**
