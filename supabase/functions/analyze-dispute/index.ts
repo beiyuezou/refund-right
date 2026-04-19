@@ -1,0 +1,297 @@
+// Edge function: analyze-dispute
+// Calls Lovable AI Gateway with tool-calling to produce structured legal analysis,
+// then stores the result in dispute_analyses (RLS-scoped to the calling user).
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
+
+const SYSTEM_PROMPT = `You are a senior consumer-rights legal analyst specialising in Southeast Asian travel disputes.
+Your job is to produce a sober, professional rights analysis that empowers a traveler to push back against booking platforms, hotels, airlines, and insurers.
+
+Jurisdictional anchors you may cite (do NOT fabricate statutes):
+- Thailand: Consumer Protection Act B.E. 2522, Office of the Consumer Protection Board (OCPB), Tourist Police 1155.
+- Singapore: Consumer Protection (Fair Trading) Act (CPFTA), Lemon Law (Part 3 CPFTA), CASE, Small Claims Tribunals.
+- Malaysia: Malaysian Aviation Consumer Protection Code 2016 (MACPC) under MAVCOM, Consumer Protection Act 1999, Tribunal for Consumer Claims.
+- Indonesia: UU Perlindungan Konsumen No. 8/1999, BPSK.
+- Vietnam / Philippines / Cambodia / Laos: cite general consumer-protection principles only when you are confident.
+
+Tone & style:
+- Sober, formal, lawyer-like — not breezy or salesy.
+- NEVER invent specific section numbers, hotline numbers, or compensation amounts you are not confident in.
+- If the user's facts are thin, say so and ask them to add specific details rather than overclaim.
+
+CRITICAL: Identify deceptive platform behavior in the leverage_points whenever the facts support it. Specifically call out:
+- A booking site (Agoda, Booking.com, Trip.com, Klook, etc.) pressuring the traveler to cancel an active insurance policy as a condition of refund.
+- An airline or OTA refusing a refund for a clearly documented airline-caused delay or cancellation.
+- Pre-authorisation holds or "damage" charges asserted without itemised evidence.
+- Substituted services materially worse than what was paid for.
+- Coercive non-refundable framing applied where consumer law overrides it.
+Frame these as named tactics so the user can confront them directly.
+
+Risk levels:
+- "strong" = clear documentary evidence + named statute/regulator likely to side with consumer.
+- "moderate" = good case but evidence gaps or jurisdictional ambiguity.
+- "weak" = limited evidence, lawful supplier conduct, or hostile jurisdiction.
+
+You MUST respond by calling the produce_analysis function. Do not return prose.`;
+
+interface AnalyzePayload {
+  category: "hotel" | "flight" | "insurance";
+  country: string;
+  city?: string | null;
+  incident_date?: string | null;
+  story: string;
+  amount?: number | null;
+  currency?: string | null;
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) {
+      return json({ error: "Unauthorized" }, 401);
+    }
+
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+
+    if (!LOVABLE_API_KEY) {
+      return json({ error: "AI service is not configured." }, 500);
+    }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const { data: userData, error: userErr } = await supabase.auth.getUser();
+    if (userErr || !userData.user) {
+      return json({ error: "Unauthorized" }, 401);
+    }
+    const userId = userData.user.id;
+
+    const body = (await req.json()) as { dispute_id: string };
+    if (!body?.dispute_id) {
+      return json({ error: "dispute_id required" }, 400);
+    }
+
+    // Load dispute (RLS ensures it's owned by caller)
+    const { data: dispute, error: dErr } = await supabase
+      .from("disputes")
+      .select("id, user_id, category, country, city, incident_date, story, amount, currency")
+      .eq("id", body.dispute_id)
+      .single();
+
+    if (dErr || !dispute) {
+      return json({ error: "Dispute not found" }, 404);
+    }
+    if (dispute.user_id !== userId) {
+      return json({ error: "Forbidden" }, 403);
+    }
+
+    await supabase.from("disputes").update({ status: "analyzing" }).eq("id", dispute.id);
+
+    const payload: AnalyzePayload = {
+      category: dispute.category as AnalyzePayload["category"],
+      country: dispute.country,
+      city: dispute.city,
+      incident_date: dispute.incident_date,
+      story: dispute.story,
+      amount: dispute.amount,
+      currency: dispute.currency,
+    };
+
+    const userPrompt = buildUserPrompt(payload);
+    const model = "google/gemini-3-flash-preview";
+
+    const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: userPrompt },
+        ],
+        tools: [
+          {
+            type: "function",
+            function: {
+              name: "produce_analysis",
+              description:
+                "Return a structured rights analysis for the traveler's dispute.",
+              parameters: {
+                type: "object",
+                properties: {
+                  risk_level: {
+                    type: "string",
+                    enum: ["strong", "moderate", "weak"],
+                    description:
+                      "Strength of the consumer's case. 'strong' = likely to win, 'moderate' = winnable with effort, 'weak' = uphill.",
+                  },
+                  confidence: {
+                    type: "integer",
+                    minimum: 0,
+                    maximum: 100,
+                    description: "Your confidence in this assessment, 0-100.",
+                  },
+                  recommendation: {
+                    type: "string",
+                    description:
+                      "300-500 word professional legal-style analysis: applicable consumer rights for this jurisdiction, how the supplier's conduct measures up, and the suggested escalation path (platform → regulator → tribunal).",
+                  },
+                  leverage_points: {
+                    type: "array",
+                    minItems: 3,
+                    maxItems: 7,
+                    description:
+                      "Strongest arguments and tactics the user can deploy. MUST explicitly name any deceptive platform behavior detected (e.g. pressure to cancel insurance, refusal to refund a clearly airline-caused delay).",
+                    items: {
+                      type: "object",
+                      properties: {
+                        title: { type: "string" },
+                        detail: { type: "string" },
+                      },
+                      required: ["title", "detail"],
+                      additionalProperties: false,
+                    },
+                  },
+                  draft_email: {
+                    type: "string",
+                    description:
+                      "A complete formal complaint email the user can send. Begin with 'Subject: ...' on the first line. Use placeholders like [RECIPIENT NAME], [BOOKING REF], [DATE] where the user must fill in. Reference applicable statutes and set a 14-day deadline.",
+                  },
+                },
+                required: [
+                  "risk_level",
+                  "confidence",
+                  "recommendation",
+                  "leverage_points",
+                  "draft_email",
+                ],
+                additionalProperties: false,
+              },
+            },
+          },
+        ],
+        tool_choice: {
+          type: "function",
+          function: { name: "produce_analysis" },
+        },
+      }),
+    });
+
+    if (!aiRes.ok) {
+      await supabase.from("disputes").update({ status: "failed" }).eq("id", dispute.id);
+      if (aiRes.status === 429) {
+        return json(
+          { error: "Rate limit exceeded. Please wait a moment and try again." },
+          429,
+        );
+      }
+      if (aiRes.status === 402) {
+        return json(
+          {
+            error:
+              "AI credits exhausted. Add credits in Settings → Workspace → Usage.",
+          },
+          402,
+        );
+      }
+      const errText = await aiRes.text();
+      console.error("AI gateway error:", aiRes.status, errText);
+      return json({ error: "AI analysis failed. Please try again." }, 500);
+    }
+
+    const aiJson = await aiRes.json();
+    const toolCall = aiJson?.choices?.[0]?.message?.tool_calls?.[0];
+    if (!toolCall?.function?.arguments) {
+      await supabase.from("disputes").update({ status: "failed" }).eq("id", dispute.id);
+      console.error("No tool call in AI response", JSON.stringify(aiJson));
+      return json({ error: "Invalid AI response." }, 500);
+    }
+
+    let parsed: {
+      risk_level: "strong" | "moderate" | "weak";
+      confidence: number;
+      recommendation: string;
+      leverage_points: { title: string; detail: string }[];
+      draft_email: string;
+    };
+    try {
+      parsed = JSON.parse(toolCall.function.arguments);
+    } catch (e) {
+      console.error("Failed to parse tool call args", e);
+      await supabase.from("disputes").update({ status: "failed" }).eq("id", dispute.id);
+      return json({ error: "Invalid AI response format." }, 500);
+    }
+
+    const { data: analysis, error: insertErr } = await supabase
+      .from("dispute_analyses")
+      .insert({
+        dispute_id: dispute.id,
+        user_id: userId,
+        risk_level: parsed.risk_level,
+        confidence: Math.max(0, Math.min(100, Math.round(parsed.confidence))),
+        recommendation: parsed.recommendation,
+        leverage_points: parsed.leverage_points,
+        draft_email: parsed.draft_email,
+        model,
+      })
+      .select()
+      .single();
+
+    if (insertErr) {
+      console.error("Insert analysis error:", insertErr);
+      return json({ error: "Failed to save analysis." }, 500);
+    }
+
+    await supabase.from("disputes").update({ status: "analyzed" }).eq("id", dispute.id);
+
+    return json({ analysis_id: analysis.id });
+  } catch (e) {
+    console.error("analyze-dispute error:", e);
+    return json({ error: e instanceof Error ? e.message : "Unknown error" }, 500);
+  }
+});
+
+function buildUserPrompt(p: AnalyzePayload) {
+  const categoryLabel = {
+    hotel: "Hotel issue (deposits, wrong booking, unjustified charges)",
+    flight: "Flight disruption (delays, cancellation, missed connection)",
+    insurance: "Insurance trap (denial, deceptive cancellation advice)",
+  }[p.category];
+
+  return `Produce a structured analysis for the following traveler dispute.
+
+Category: ${categoryLabel}
+Country: ${p.country}${p.city ? ` (${p.city})` : ""}
+Incident date: ${p.incident_date ?? "not provided"}
+Amount in dispute: ${p.amount != null ? `${p.amount} ${p.currency ?? ""}`.trim() : "not provided"}
+
+Traveler's account:
+"""
+${p.story}
+"""
+
+Remember: explicitly name any deceptive platform tactics in leverage_points, and ground your reasoning in the consumer-protection framework of ${p.country}. Respond by invoking produce_analysis.`;
+}
+
+function json(payload: unknown, status = 200) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
