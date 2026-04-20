@@ -39,7 +39,7 @@ export const Route = createRootRoute({
           "AI-powered legal assistant for travel disputes in Southeast Asia: hotel deposits, flight delays, insurance traps. Free to start.",
       },
       { name: "author", content: "RefundRight" },
-      { property: "og:title", content: "RefundRight — Don't let them keep your money" },
+      { property: "og:title", content: "RefundRight — Fight back against unfair travel charges" },
       {
         property: "og:description",
         content:
@@ -47,6 +47,12 @@ export const Route = createRootRoute({
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { name: "twitter:title", content: "RefundRight — Fight back against unfair travel charges" },
+      { name: "description", content: "Your AI-powered legal assistant for SE Asia travel disputes. We help you recover hotel deposits and flight refunds using localized legal expertise." },
+      { property: "og:description", content: "Your AI-powered legal assistant for SE Asia travel disputes. We help you recover hotel deposits and flight refunds using localized legal expertise." },
+      { name: "twitter:description", content: "Your AI-powered legal assistant for SE Asia travel disputes. We help you recover hotel deposits and flight refunds using localized legal expertise." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/eaSDXDiJpmbp0VxrETpMoHmeeB73/social-images/social-1776653325687-截屏2026-04-20_上午10.48.34.webp" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/eaSDXDiJpmbp0VxrETpMoHmeeB73/social-images/social-1776653325687-截屏2026-04-20_上午10.48.34.webp" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
