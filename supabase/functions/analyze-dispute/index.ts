@@ -297,8 +297,8 @@ Deno.serve(async (req) => {
 
     return json({ analysis_id: analysis.id });
   } catch (e) {
-    console.error("analyze-dispute error:", e);
-    return json({ error: e instanceof Error ? e.message : "Unknown error" }, 500);
+    console.error("analyze-dispute unexpected error:", e);
+    return json({ error: "An unexpected error occurred. Please try again." }, 500);
   }
 });
 
