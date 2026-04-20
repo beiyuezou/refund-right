@@ -1,37 +1,48 @@
+## Plan: Upgrade analyze-dispute to multi-agent expert framework
 
-## Premium redesign of `/knowledge` + header polish
+The user wants to replace the current "basic assistant" system prompt in `supabase/functions/analyze-dispute/index.ts` with a "professional multi-agent grade" framework. **They did not paste the framework text** — the message says "this integrated expert framework" but no content follows.
 
-### Scope
+I need that text before I can implement. I also need a couple of structural decisions, because a multi-agent framework typically implies more than just a longer prompt.
 
-1. **New color palette** (in `src/styles.css`) — deep soft teal as primary, cool slate surfaces, warm brushed gold as CTA accent. Tokens updated: `--primary`, `--primary-soft`, `--accent` (gold), `--accent-soft`, plus dark-mode equivalents.
-2. **Typography** — load Poppins via Google Fonts in `__root.tsx`, set as `--font-display`; keep Inter for body with improved line-height. Heading tracking tightened.
-3. **Knowledge hero** — condense the subtext to one impactful sentence (new i18n key `knowledge.subShort`), enlarge H1 to `text-5xl sm:text-6xl`, drop the badge clutter to a slim uppercase eyebrow, more vertical breathing room.
-4. **Article tiles** — `rounded-3xl`, `p-8`, `gap-6 md:gap-8`, soft border + subtle shadow that deepens on hover, lift animation. Topic line-art icon (lucide) per article in a soft circle: `Hotel` (deposits), `PlaneTakeoff` (delays), `ShieldAlert` (insurance), `Bus` (transport). Country pill restyled with subtle teal background, category in muted small-caps.
-5. **"Read guide" link** — gold color, arrow slides right on hover (`group-hover:translate-x-1`).
-6. **New 4th article** — add `thailand-transport-overcharges` to `ARTICLES` in `src/lib/knowledge.ts`: covers taxi meter refusal, airport scams, Grab disputes, Thai Consumer Protection Act escalation. Full markdown body, summary, country=Thailand, category=transport.
-7. **Header polish** (`SiteChrome.tsx`) — rename "My disputes" → "Disputes", add a small circular avatar (lucide `User` in a soft slate circle) next to the existing toggles when signed in. Tightened spacing.
-8. **Quietly fix the SSR hydration mismatch** on the nav link (server rendered "Knowledge", client rendered "知识库") by ensuring i18n language is only applied after mount, matching the existing pattern in `i18n.ts`.
+### Questions I need answered
 
-### Out of scope
-- `/knowledge/$slug` detail page styling (only data addition for the new article).
-- Dashboard / wizard / analysis page restyling.
-- Mobile hamburger menu (separate task).
+1. **The framework text itself** — please paste the full system prompt / framework you want to use. Without it I can't write the upgrade. If it's long, you can paste it as `@/tmp/framework.txt` content or just inline.
 
-### Defaults I'm assuming (tell me to change any)
+Use the following logic for the system prompt:  
+"You are an integrated Multi-Agent Orchestrator. Act as a panel of experts:  
 
-| Decision | Default |
-|---|---|
-| Palette scope | **App-wide** — keeps every page consistent with the premium direction |
-| New article topic | **Thailand: taxi & Grab overcharges** — strongest match to existing SE-Asia traveler focus |
-| Display font | **Poppins headings + Inter body** — geometric premium for titles, proven readable body |
-| Avatar behavior | **Static circle with `User` icon** for now — non-functional placeholder, no dropdown |
 
-If any of these defaults are wrong, reply with the change before approving and I'll adjust before implementing.
+- EVIDENCE AGENT: Extract booking IDs, names, timelines, and amounts with precision.
+- LEGAL AGENT: Cite specific SE Asia consumer laws (e.g. Thailand CPA, Singapore CPFTA) and call out deceptive platform behaviors.
+- FINANCE/INSURANCE AGENT: Identify coverage triggers and propose a clear escalation path (Platform -> Bank/Chargeback -> Regulatory Body).
+- UX/LOCALIZATION: If user language is 'zh', output recommendations in professional Chinese, and provide the 'Appeal Email Draft' in Bilingual format (English with Chinese translations in brackets). If 'en', use full English."
+  &nbsp;
 
-### Files I'll touch
-- `src/styles.css` — new color tokens + dark variants
-- `src/routes/__root.tsx` — Poppins font link
-- `src/routes/knowledge.tsx` — hero + tiles redesign with topic icons
-- `src/lib/knowledge.ts` — add 4th article (transport)
-- `src/lib/i18n.ts` — `knowledge.subShort`, transport country/category strings, new "Disputes" label, fix mount-only language application
-- `src/components/SiteChrome.tsx` — rename link, add avatar placeholder
+1. **Single-prompt vs true multi-agent** — "multi-agent" can mean two very different things:
+  - **(A) One enriched prompt** that *describes* multiple expert roles (legal analyst + negotiation strategist + evidence auditor) and asks the model to reason as if it were a panel. One AI call, same latency/cost. Easiest, lowest risk.
+  - **(B) Real multi-agent pipeline** — sequential AI calls: e.g. Agent 1 extracts facts → Agent 2 cites jurisdiction-specific law → Agent 3 drafts strategy → Agent 4 writes the email. Higher quality, ~3–4× slower and more expensive per analysis.
+
+Structure: Choose (A) One enriched prompt. I want the latency to remain low and the process to be simple. Simulate the multi-agent reasoning within a single call.
+
+&nbsp;
+
+1. **Output schema changes** — the current `produce_analysis` tool returns `risk_level`, `confidence`, `recommendation`, `leverage_points[]`, `draft_email`. Should the upgraded framework:
+  - **Keep the same schema** (just deeper reasoning behind the same fields), or
+  - **Add new fields** (e.g. `evidence_gaps`, `cited_statutes[]`, `escalation_timeline[]`, `counter_arguments[]`)?
+   New fields require updating `dispute_analyses` storage and the `/analysis/$disputeId` UI to render them.
+
+. Output Schema: Keep the same schema. Do not add new fields to the database. Instead, pack the higher-quality reasoning, the bilingual email, and the specific legal citations into the existing `recommendation`, `leverage_points[]`, and `draft_email` fields.
+
+1. **Model** — current default is `google/gemini-3-flash-preview` (fast, cheap). A heavier prompt usually benefits from a stronger reasoning model:
+  - Stay on `gemini-3-flash-preview` (fastest, cheapest)
+  - Upgrade to `google/gemini-2.5-pro` (best Gemini reasoning)
+  - Upgrade to `openai/gpt-5` (top-tier reasoning, slower & more expensive)
+
+Stay on google/gemini-3-flash-preview. It’s fast and cost-effective for this demo.  
+Please update the edge function and the UI prompt now based on these choices.
+
+Please paste the framework and answer the four questions, then I'll come back with a concrete implementation plan (files to touch, schema migration if needed, UI updates).
+
+**Ask me any questions you need in order to fully understand what I want from this feature and how I envision it.**
+
+&nbsp;
