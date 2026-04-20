@@ -311,7 +311,7 @@ function buildUserPrompt(p: AnalyzePayload, language: "en" | "zh") {
 
   const langReminder =
     language === "zh"
-      ? `CRITICAL: All output (recommendation, leverage_points, draft_email including Subject line) MUST be in Simplified Chinese. Cite statutes as "中文翻译 (English original name)".`
+      ? `CRITICAL: recommendation and leverage_points MUST be in Simplified Chinese. The draft_email MUST be BILINGUAL — write each line / short paragraph in English first, then place the Chinese translation in square brackets on the very next line (Subject line included). Cite statutes as "中文翻译 (English original name)".`
       : `CRITICAL: All output MUST be in English.`;
 
   return `Produce a structured analysis for the following traveler dispute.
