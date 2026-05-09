@@ -1,48 +1,48 @@
-## Plan: Upgrade analyze-dispute to multi-agent expert framework
+## ElevenLabs integration: voice intake + bilingual TTS playback
 
-The user wants to replace the current "basic assistant" system prompt in `supabase/functions/analyze-dispute/index.ts` with a "professional multi-agent grade" framework. **They did not paste the framework text** — the message says "this integrated expert framework" but no content follows.
+Add two ElevenLabs-powered features to RefundRight using the ElevenLabs connector for credentials.
 
-I need that text before I can implement. I also need a couple of structural decisions, because a multi-agent framework typically implies more than just a longer prompt.
+### 1. Voice intake on the claim form (Scribe v2 STT)
 
-### Questions I need answered
+On `src/routes/claim.$category.tsx`, add a mic button next to the **story** textarea.
+- Tap-to-record using `MediaRecorder` (webm/opus), tap again to stop.
+- Sends the audio blob to a new server function `transcribe-audio` (TanStack server route under `src/routes/api/`) that proxies to ElevenLabs `/v1/speech-to-text` with `model_id=scribe_v2`, `diarize=false`, `tag_audio_events=false`, and `language_code` derived from the current `i18n.language` (`zh` → `cmn`, else `eng`; omit for auto-detect if user picks "Auto").
+- Returned transcript is appended to the existing story textarea (not replaced) so users can dictate multiple times.
+- Loading state on the mic button; toast on error; mic permission prompt handled gracefully.
 
-1. **The framework text itself** — please paste the full system prompt / framework you want to use. Without it I can't write the upgrade. If it's long, you can paste it as `@/tmp/framework.txt` content or just inline.
+### 2. "Listen to your draft" on the analysis page (TTS)
 
-Use the following logic for the system prompt:  
-"You are an integrated Multi-Agent Orchestrator. Act as a panel of experts:  
+On `src/routes/analysis.$disputeId.tsx`, add a **▶ Listen** button in the draft-email card and a smaller one on the recommendation card.
+- Calls a new server route `tts` that proxies to ElevenLabs `/v1/text-to-speech/{voiceId}?output_format=mp3_44100_128`, returns raw MP3 bytes.
+- Voice: **Sarah** (`EXAVITQu4vr4xnSDxMaL`) — authoritative female, multilingual.
+- Model: `eleven_multilingual_v2` so the bilingual EN + [中文] email reads naturally in both languages.
+- Client plays via `new Audio(URL.createObjectURL(blob))`; UI toggles ▶ Play / ⏸ Pause / ⏹ Stop with a thin progress bar.
+- Cache the generated blob per analysis id in component state so replays don't re-hit the API.
 
+### Auth & secrets
 
-- EVIDENCE AGENT: Extract booking IDs, names, timelines, and amounts with precision.
-- LEGAL AGENT: Cite specific SE Asia consumer laws (e.g. Thailand CPA, Singapore CPFTA) and call out deceptive platform behaviors.
-- FINANCE/INSURANCE AGENT: Identify coverage triggers and propose a clear escalation path (Platform -> Bank/Chargeback -> Regulatory Body).
-- UX/LOCALIZATION: If user language is 'zh', output recommendations in professional Chinese, and provide the 'Appeal Email Draft' in Bilingual format (English with Chinese translations in brackets). If 'en', use full English."
-  &nbsp;
+- Use the **ElevenLabs connector** (direct API, not gateway). After connect, `ELEVENLABS_API_KEY` is available as an env var to server functions.
+- All ElevenLabs calls happen server-side only; the key is never exposed to the browser.
 
-1. **Single-prompt vs true multi-agent** — "multi-agent" can mean two very different things:
-  - **(A) One enriched prompt** that *describes* multiple expert roles (legal analyst + negotiation strategist + evidence auditor) and asks the model to reason as if it were a panel. One AI call, same latency/cost. Easiest, lowest risk.
-  - **(B) Real multi-agent pipeline** — sequential AI calls: e.g. Agent 1 extracts facts → Agent 2 cites jurisdiction-specific law → Agent 3 drafts strategy → Agent 4 writes the email. Higher quality, ~3–4× slower and more expensive per analysis.
+### Files to add
 
-Structure: Choose (A) One enriched prompt. I want the latency to remain low and the process to be simple. Simulate the multi-agent reasoning within a single call.
+- `src/routes/api/transcribe-audio.ts` — POST, accepts multipart `audio` file + optional `language`, returns `{ text }`.
+- `src/routes/api/tts.ts` — POST, accepts `{ text, voiceId? }`, streams MP3 back.
+- `src/components/VoiceInputButton.tsx` — reusable mic-record button used in the claim form.
+- `src/components/PlayAudioButton.tsx` — reusable play/pause button used in the analysis page.
 
-&nbsp;
+### Files to edit
 
-1. **Output schema changes** — the current `produce_analysis` tool returns `risk_level`, `confidence`, `recommendation`, `leverage_points[]`, `draft_email`. Should the upgraded framework:
-  - **Keep the same schema** (just deeper reasoning behind the same fields), or
-  - **Add new fields** (e.g. `evidence_gaps`, `cited_statutes[]`, `escalation_timeline[]`, `counter_arguments[]`)?
-   New fields require updating `dispute_analyses` storage and the `/analysis/$disputeId` UI to render them.
+- `src/routes/claim.$category.tsx` — mount `VoiceInputButton` next to the story textarea.
+- `src/routes/analysis.$disputeId.tsx` — mount `PlayAudioButton` on draft-email and recommendation cards.
+- `src/lib/i18n.ts` — add strings: `voice.record`, `voice.recording`, `voice.transcribing`, `voice.error`, `voice.listen`, `voice.pause`, `voice.stop`, in EN + 中文.
 
-. Output Schema: Keep the same schema. Do not add new fields to the database. Instead, pack the higher-quality reasoning, the bilingual email, and the specific legal citations into the existing `recommendation`, `leverage_points[]`, and `draft_email` fields.
+### Out of scope (not building now)
 
-1. **Model** — current default is `google/gemini-3-flash-preview` (fast, cheap). A heavier prompt usually benefits from a stronger reasoning model:
-  - Stay on `gemini-3-flash-preview` (fastest, cheapest)
-  - Upgrade to `google/gemini-2.5-pro` (best Gemini reasoning)
-  - Upgrade to `openai/gpt-5` (top-tier reasoning, slower & more expensive)
+- Conversational voice agent (#3 from the proposal).
+- Voice picker UI — Sarah is hard-coded; can be added later.
+- Storing generated audio in Supabase Storage (kept ephemeral in memory).
 
-Stay on google/gemini-3-flash-preview. It’s fast and cost-effective for this demo.  
-Please update the edge function and the UI prompt now based on these choices.
+### Open question I'll resolve at build time
 
-Please paste the framework and answer the four questions, then I'll come back with a concrete implementation plan (files to touch, schema migration if needed, UI updates).
-
-**Ask me any questions you need in order to fully understand what I want from this feature and how I envision it.**
-
-&nbsp;
+The connector flow will be triggered first via `standard_connectors--connect` with `connector_id: elevenlabs`. If for any reason that connection doesn't expose `ELEVENLABS_API_KEY` to the runtime, I'll fall back to asking you to add it as a secret.
