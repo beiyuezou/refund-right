@@ -10,8 +10,11 @@ type Props = {
   size?: "sm" | "default";
 };
 
+// Module-level registry so only one PlayAudioButton plays at a time.
+let activeStop: (() => void) | null = null;
+
 export function PlayAudioButton({ text, cacheKey, size = "sm" }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [state, setState] = useState<"idle" | "loading" | "playing" | "paused">("idle");
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const urlRef = useRef<string | null>(null);
@@ -44,16 +47,22 @@ export function PlayAudioButton({ text, cacheKey, size = "sm" }: Props) {
       return;
     }
     if (state === "paused" && audioRef.current) {
+      // Stop any other instance before resuming.
+      if (activeStop && activeStop !== stopThis) activeStop();
+      activeStop = stopThis;
       await audioRef.current.play();
       setState("playing");
       return;
     }
+    // Stop any currently playing instance elsewhere.
+    if (activeStop) activeStop();
     setState("loading");
     try {
+      const lang = i18n.language?.startsWith("zh") ? "zh" : "en";
       const res = await fetch("/api/tts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ text, language: lang }),
       });
       if (!res.ok) {
         toast.error(t("voice.errTts"));
@@ -70,6 +79,7 @@ export function PlayAudioButton({ text, cacheKey, size = "sm" }: Props) {
         if (!audio.ended) setState((s) => (s === "playing" ? "paused" : s));
       };
       await audio.play();
+      activeStop = stopThis;
       setState("playing");
     } catch (err) {
       console.error(err);
@@ -77,6 +87,19 @@ export function PlayAudioButton({ text, cacheKey, size = "sm" }: Props) {
       setState("idle");
     }
   }
+
+  function stopThis() {
+    if (audioRef.current && !audioRef.current.paused) {
+      audioRef.current.pause();
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      if (activeStop === stopThis) activeStop = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <Button
