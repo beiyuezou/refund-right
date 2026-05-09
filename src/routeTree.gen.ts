@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as KnowledgeSlugRouteImport } from './routes/knowledge.$slug'
 import { Route as ClaimCategoryRouteImport } from './routes/claim.$category'
+import { Route as ApiTtsRouteImport } from './routes/api/tts'
 import { Route as ApiTranscribeAudioRouteImport } from './routes/api/transcribe-audio'
 import { Route as AnalysisDisputeIdRouteImport } from './routes/analysis.$disputeId'
 
@@ -48,6 +49,11 @@ const ClaimCategoryRoute = ClaimCategoryRouteImport.update({
   path: '/claim/$category',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTtsRoute = ApiTtsRouteImport.update({
+  id: '/api/tts',
+  path: '/api/tts',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiTranscribeAudioRoute = ApiTranscribeAudioRouteImport.update({
   id: '/api/transcribe-audio',
   path: '/api/transcribe-audio',
@@ -66,6 +72,7 @@ export interface FileRoutesByFullPath {
   '/knowledge': typeof KnowledgeRouteWithChildren
   '/analysis/$disputeId': typeof AnalysisDisputeIdRoute
   '/api/transcribe-audio': typeof ApiTranscribeAudioRoute
+  '/api/tts': typeof ApiTtsRoute
   '/claim/$category': typeof ClaimCategoryRoute
   '/knowledge/$slug': typeof KnowledgeSlugRoute
 }
@@ -76,6 +83,7 @@ export interface FileRoutesByTo {
   '/knowledge': typeof KnowledgeRouteWithChildren
   '/analysis/$disputeId': typeof AnalysisDisputeIdRoute
   '/api/transcribe-audio': typeof ApiTranscribeAudioRoute
+  '/api/tts': typeof ApiTtsRoute
   '/claim/$category': typeof ClaimCategoryRoute
   '/knowledge/$slug': typeof KnowledgeSlugRoute
 }
@@ -87,6 +95,7 @@ export interface FileRoutesById {
   '/knowledge': typeof KnowledgeRouteWithChildren
   '/analysis/$disputeId': typeof AnalysisDisputeIdRoute
   '/api/transcribe-audio': typeof ApiTranscribeAudioRoute
+  '/api/tts': typeof ApiTtsRoute
   '/claim/$category': typeof ClaimCategoryRoute
   '/knowledge/$slug': typeof KnowledgeSlugRoute
 }
@@ -99,6 +108,7 @@ export interface FileRouteTypes {
     | '/knowledge'
     | '/analysis/$disputeId'
     | '/api/transcribe-audio'
+    | '/api/tts'
     | '/claim/$category'
     | '/knowledge/$slug'
   fileRoutesByTo: FileRoutesByTo
@@ -109,6 +119,7 @@ export interface FileRouteTypes {
     | '/knowledge'
     | '/analysis/$disputeId'
     | '/api/transcribe-audio'
+    | '/api/tts'
     | '/claim/$category'
     | '/knowledge/$slug'
   id:
@@ -119,6 +130,7 @@ export interface FileRouteTypes {
     | '/knowledge'
     | '/analysis/$disputeId'
     | '/api/transcribe-audio'
+    | '/api/tts'
     | '/claim/$category'
     | '/knowledge/$slug'
   fileRoutesById: FileRoutesById
@@ -130,6 +142,7 @@ export interface RootRouteChildren {
   KnowledgeRoute: typeof KnowledgeRouteWithChildren
   AnalysisDisputeIdRoute: typeof AnalysisDisputeIdRoute
   ApiTranscribeAudioRoute: typeof ApiTranscribeAudioRoute
+  ApiTtsRoute: typeof ApiTtsRoute
   ClaimCategoryRoute: typeof ClaimCategoryRoute
 }
 
@@ -177,6 +190,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClaimCategoryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/tts': {
+      id: '/api/tts'
+      path: '/api/tts'
+      fullPath: '/api/tts'
+      preLoaderRoute: typeof ApiTtsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/transcribe-audio': {
       id: '/api/transcribe-audio'
       path: '/api/transcribe-audio'
@@ -213,8 +233,18 @@ const rootRouteChildren: RootRouteChildren = {
   KnowledgeRoute: KnowledgeRouteWithChildren,
   AnalysisDisputeIdRoute: AnalysisDisputeIdRoute,
   ApiTranscribeAudioRoute: ApiTranscribeAudioRoute,
+  ApiTtsRoute: ApiTtsRoute,
   ClaimCategoryRoute: ClaimCategoryRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
