@@ -431,6 +431,21 @@ const zh: typeof en = {
     Cambodia: "柬埔寨",
     Laos: "老挝",
   },
+  voice: {
+    record: "语音输入",
+    stop: "停止",
+    transcribing: "识别中…",
+    added: "已添加文字",
+    listen: "朗读",
+    pause: "暂停",
+    resume: "继续",
+    loading: "加载中…",
+    errMic: "麦克风权限被拒绝。",
+    errTooShort: "录音太短。",
+    errTranscribe: "语音识别失败，请重试。",
+    errEmpty: "未检测到语音。",
+    errTts: "无法生成音频。",
+  },
 };
 
 if (!i18n.isInitialized) {
