@@ -30,6 +30,7 @@ import { CATEGORIES, COUNTRIES, type CategoryKey } from "@/lib/categories";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { useTranslation } from "react-i18next";
+import { VoiceInputButton } from "@/components/VoiceInputButton";
 
 const categorySchema = z.object({
   category: z.enum(["hotel", "flight", "insurance"]),
@@ -306,7 +307,15 @@ function WizardPage() {
                   <p className="text-sm text-muted-foreground mt-1">{t("wizard.s1Sub")}</p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="story" className="sr-only">{t("wizard.s1Title")}</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="story" className="sr-only">{t("wizard.s1Title")}</Label>
+                    <VoiceInputButton
+                      language={i18n.language?.startsWith("zh") ? "cmn" : "eng"}
+                      onTranscript={(txt) =>
+                        setStory((cur) => (cur.trim() ? `${cur.trim()} ${txt}` : txt))
+                      }
+                    />
+                  </div>
                   <Textarea
                     id="story"
                     value={story}

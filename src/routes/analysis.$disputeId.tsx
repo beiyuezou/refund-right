@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { type CategoryKey } from "@/lib/categories";
+import { PlayAudioButton } from "@/components/PlayAudioButton";
 
 export const Route = createFileRoute("/analysis/$disputeId")({
   head: () => ({
@@ -302,6 +303,9 @@ function AnalysisPage() {
             <h2 className="flex items-center gap-2 text-lg font-semibold text-primary">
               <Sparkles className="h-5 w-5 text-accent" /> {t("analysis.recommendation")}
             </h2>
+            <div className="mt-2">
+              <PlayAudioButton text={analysis.recommendation} cacheKey={`rec-${analysis.id}`} />
+            </div>
             <div className="mt-3 prose-styles whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">
               {analysis.recommendation}
             </div>
@@ -331,6 +335,7 @@ function AnalysisPage() {
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <h2 className="text-lg font-semibold text-primary">{t("analysis.draftEmail")}</h2>
               <div className="flex gap-2">
+                <PlayAudioButton text={analysis.draft_email} cacheKey={`email-${analysis.id}`} />
                 <Button
                   variant="outline"
                   size="sm"

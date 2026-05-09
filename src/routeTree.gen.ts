@@ -15,6 +15,8 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as KnowledgeSlugRouteImport } from './routes/knowledge.$slug'
 import { Route as ClaimCategoryRouteImport } from './routes/claim.$category'
+import { Route as ApiTtsRouteImport } from './routes/api/tts'
+import { Route as ApiTranscribeAudioRouteImport } from './routes/api/transcribe-audio'
 import { Route as AnalysisDisputeIdRouteImport } from './routes/analysis.$disputeId'
 
 const KnowledgeRoute = KnowledgeRouteImport.update({
@@ -47,6 +49,16 @@ const ClaimCategoryRoute = ClaimCategoryRouteImport.update({
   path: '/claim/$category',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTtsRoute = ApiTtsRouteImport.update({
+  id: '/api/tts',
+  path: '/api/tts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTranscribeAudioRoute = ApiTranscribeAudioRouteImport.update({
+  id: '/api/transcribe-audio',
+  path: '/api/transcribe-audio',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AnalysisDisputeIdRoute = AnalysisDisputeIdRouteImport.update({
   id: '/analysis/$disputeId',
   path: '/analysis/$disputeId',
@@ -59,6 +71,8 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/knowledge': typeof KnowledgeRouteWithChildren
   '/analysis/$disputeId': typeof AnalysisDisputeIdRoute
+  '/api/transcribe-audio': typeof ApiTranscribeAudioRoute
+  '/api/tts': typeof ApiTtsRoute
   '/claim/$category': typeof ClaimCategoryRoute
   '/knowledge/$slug': typeof KnowledgeSlugRoute
 }
@@ -68,6 +82,8 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/knowledge': typeof KnowledgeRouteWithChildren
   '/analysis/$disputeId': typeof AnalysisDisputeIdRoute
+  '/api/transcribe-audio': typeof ApiTranscribeAudioRoute
+  '/api/tts': typeof ApiTtsRoute
   '/claim/$category': typeof ClaimCategoryRoute
   '/knowledge/$slug': typeof KnowledgeSlugRoute
 }
@@ -78,6 +94,8 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/knowledge': typeof KnowledgeRouteWithChildren
   '/analysis/$disputeId': typeof AnalysisDisputeIdRoute
+  '/api/transcribe-audio': typeof ApiTranscribeAudioRoute
+  '/api/tts': typeof ApiTtsRoute
   '/claim/$category': typeof ClaimCategoryRoute
   '/knowledge/$slug': typeof KnowledgeSlugRoute
 }
@@ -89,6 +107,8 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/knowledge'
     | '/analysis/$disputeId'
+    | '/api/transcribe-audio'
+    | '/api/tts'
     | '/claim/$category'
     | '/knowledge/$slug'
   fileRoutesByTo: FileRoutesByTo
@@ -98,6 +118,8 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/knowledge'
     | '/analysis/$disputeId'
+    | '/api/transcribe-audio'
+    | '/api/tts'
     | '/claim/$category'
     | '/knowledge/$slug'
   id:
@@ -107,6 +129,8 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/knowledge'
     | '/analysis/$disputeId'
+    | '/api/transcribe-audio'
+    | '/api/tts'
     | '/claim/$category'
     | '/knowledge/$slug'
   fileRoutesById: FileRoutesById
@@ -117,6 +141,8 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   KnowledgeRoute: typeof KnowledgeRouteWithChildren
   AnalysisDisputeIdRoute: typeof AnalysisDisputeIdRoute
+  ApiTranscribeAudioRoute: typeof ApiTranscribeAudioRoute
+  ApiTtsRoute: typeof ApiTtsRoute
   ClaimCategoryRoute: typeof ClaimCategoryRoute
 }
 
@@ -164,6 +190,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClaimCategoryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/tts': {
+      id: '/api/tts'
+      path: '/api/tts'
+      fullPath: '/api/tts'
+      preLoaderRoute: typeof ApiTtsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/transcribe-audio': {
+      id: '/api/transcribe-audio'
+      path: '/api/transcribe-audio'
+      fullPath: '/api/transcribe-audio'
+      preLoaderRoute: typeof ApiTranscribeAudioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/analysis/$disputeId': {
       id: '/analysis/$disputeId'
       path: '/analysis/$disputeId'
@@ -192,6 +232,8 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   KnowledgeRoute: KnowledgeRouteWithChildren,
   AnalysisDisputeIdRoute: AnalysisDisputeIdRoute,
+  ApiTranscribeAudioRoute: ApiTranscribeAudioRoute,
+  ApiTtsRoute: ApiTtsRoute,
   ClaimCategoryRoute: ClaimCategoryRoute,
 }
 export const routeTree = rootRouteImport

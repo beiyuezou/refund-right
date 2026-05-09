@@ -210,6 +210,21 @@ const en = {
     Cambodia: "Cambodia",
     Laos: "Laos",
   },
+  voice: {
+    record: "Dictate",
+    stop: "Stop",
+    transcribing: "Transcribing…",
+    added: "Transcript added",
+    listen: "Listen",
+    pause: "Pause",
+    resume: "Resume",
+    loading: "Loading…",
+    errMic: "Microphone access was blocked.",
+    errTooShort: "Recording was too short.",
+    errTranscribe: "Transcription failed. Please try again.",
+    errEmpty: "No speech detected.",
+    errTts: "Could not generate audio.",
+  },
 };
 
 const zh: typeof en = {
@@ -415,6 +430,21 @@ const zh: typeof en = {
     Philippines: "菲律宾",
     Cambodia: "柬埔寨",
     Laos: "老挝",
+  },
+  voice: {
+    record: "语音输入",
+    stop: "停止",
+    transcribing: "识别中…",
+    added: "已添加文字",
+    listen: "朗读",
+    pause: "暂停",
+    resume: "继续",
+    loading: "加载中…",
+    errMic: "麦克风权限被拒绝。",
+    errTooShort: "录音太短。",
+    errTranscribe: "语音识别失败，请重试。",
+    errEmpty: "未检测到语音。",
+    errTts: "无法生成音频。",
   },
 };
 
