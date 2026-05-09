@@ -310,7 +310,7 @@ function WizardPage() {
                   <div className="flex items-center justify-between">
                     <Label htmlFor="story" className="sr-only">{t("wizard.s1Title")}</Label>
                     <VoiceInputButton
-                      language={i18n.language?.startsWith("zh") ? "cmn" : "eng"}
+                      language={i18n.language?.startsWith("zh") ? "zho" : "eng"}
                       onTranscript={(txt) =>
                         setStory((cur) => (cur.trim() ? `${cur.trim()} ${txt}` : txt))
                       }
