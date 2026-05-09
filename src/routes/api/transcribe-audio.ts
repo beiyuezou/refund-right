@@ -16,11 +16,11 @@ export const Route = createFileRoute("/api/transcribe-audio")({
           return Response.json({ error: "Invalid multipart body" }, { status: 400 });
         }
 
-        const audio = form.get("audio");
-        if (!(audio instanceof File) && !(audio instanceof Blob)) {
+        const audio = form.get("audio") as unknown;
+        if (!(audio instanceof Blob)) {
           return Response.json({ error: "Missing 'audio' file" }, { status: 400 });
         }
-        if ((audio as File).size > 25 * 1024 * 1024) {
+        if (audio.size > 25 * 1024 * 1024) {
           return Response.json({ error: "Audio too large (max 25MB)" }, { status: 413 });
         }
 
