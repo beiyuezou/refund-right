@@ -210,6 +210,21 @@ const en = {
     Cambodia: "Cambodia",
     Laos: "Laos",
   },
+  voice: {
+    record: "Dictate",
+    stop: "Stop",
+    transcribing: "Transcribing…",
+    added: "Transcript added",
+    listen: "Listen",
+    pause: "Pause",
+    resume: "Resume",
+    loading: "Loading…",
+    errMic: "Microphone access was blocked.",
+    errTooShort: "Recording was too short.",
+    errTranscribe: "Transcription failed. Please try again.",
+    errEmpty: "No speech detected.",
+    errTts: "Could not generate audio.",
+  },
 };
 
 const zh: typeof en = {
