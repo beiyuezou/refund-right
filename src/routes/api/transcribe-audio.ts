@@ -42,7 +42,15 @@ export const Route = createFileRoute("/api/transcribe-audio")({
         if (!res.ok) {
           const errText = await res.text().catch(() => "");
           console.error("ElevenLabs STT error", res.status, errText);
-          return Response.json({ error: "Transcription failed" }, { status: 502 });
+          let detail = "";
+          try {
+            const j = JSON.parse(errText);
+            detail = j?.detail?.message || j?.detail || j?.message || "";
+          } catch { /* ignore */ }
+          return Response.json(
+            { error: detail || "Transcription failed" },
+            { status: 502 },
+          );
         }
 
         const data = (await res.json()) as { text?: string };
