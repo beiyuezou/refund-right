@@ -92,6 +92,7 @@ function AnalysisPage() {
   const [saving, setSaving] = useState(false);
   const [edited, setEdited] = useState(false);
   const [pendingRerun, setPendingRerun] = useState<"en" | "zh" | "default" | null>(null);
+  const saveDraft = useServerFn(saveDraftEmail);
 
   const load = useCallback(async () => {
     if (!user) return;
