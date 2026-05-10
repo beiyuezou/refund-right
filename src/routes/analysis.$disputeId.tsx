@@ -33,6 +33,8 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { type CategoryKey } from "@/lib/categories";
 import { PlayAudioButton } from "@/components/PlayAudioButton";
+import { useServerFn } from "@tanstack/react-start";
+import { saveDraftEmail } from "@/lib/analysis.functions";
 
 export const Route = createFileRoute("/analysis/$disputeId")({
   head: () => ({
