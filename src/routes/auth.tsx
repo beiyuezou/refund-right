@@ -11,7 +11,12 @@ import { SiteHeader } from "@/components/SiteChrome";
 import { Shield } from "lucide-react";
 
 const searchSchema = z.object({
-  redirect: z.string().optional(),
+  redirect: z
+    .string()
+    .optional()
+    .refine((v) => !v || (v.startsWith("/") && !v.startsWith("//")), {
+      message: "Invalid redirect",
+    }),
   draft: z.string().optional(),
 });
 
@@ -59,7 +64,8 @@ function AuthPage() {
           if (error.message.toLowerCase().includes("already")) {
             toast.error(t("auth.errExists"));
           } else {
-            toast.error(error.message);
+            if (import.meta.env.DEV) console.warn("signup error", error);
+            toast.error(t("auth.errGeneric"));
           }
           return;
         }
@@ -75,8 +81,12 @@ function AuthPage() {
         }
         toast.success(t("auth.welcome"));
       }
-      const redirect = search.redirect ?? "/dashboard";
-      navigate({ to: redirect });
+      const candidate = search.redirect;
+      const safe =
+        candidate && candidate.startsWith("/") && !candidate.startsWith("//")
+          ? candidate
+          : "/dashboard";
+      navigate({ to: safe });
     } finally {
       setBusy(false);
     }
