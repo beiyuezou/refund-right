@@ -220,14 +220,22 @@ function WizardPage() {
               console.warn("Upload failed", f.file.name, upErr);
               return;
             }
-            await supabase.from("dispute_evidence").insert({
-              dispute_id: dispute.id,
-              user_id: user.id,
-              storage_path: path,
-              file_name: f.file.name,
-              mime_type: f.file.type || null,
-              size_bytes: f.file.size,
-            });
+            try {
+              const result = await validateEvidence({
+                data: {
+                  dispute_id: dispute.id,
+                  storage_path: path,
+                  file_name: f.file.name,
+                  mime_type: f.file.type,
+                  size_bytes: f.file.size,
+                },
+              });
+              if (!result.ok) {
+                toast.error(t("wizard.errFileType", { name: f.file.name }));
+              }
+            } catch (err) {
+              if (import.meta.env.DEV) console.warn("validateEvidence", err);
+            }
           }),
         );
       }
