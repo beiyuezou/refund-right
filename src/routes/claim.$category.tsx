@@ -31,6 +31,8 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { useTranslation } from "react-i18next";
 import { VoiceInputButton } from "@/components/VoiceInputButton";
+import { useServerFn } from "@tanstack/react-start";
+import { validateAndRegisterEvidence } from "@/lib/evidence.functions";
 
 const categorySchema = z.object({
   category: z.enum(["hotel", "flight", "insurance"]),
@@ -60,6 +62,12 @@ const ICONS: Record<CategoryKey, typeof Building2> = {
 
 const MAX_FILES = 10;
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
+const ALLOWED_MIMES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/pdf",
+]);
 
 type DraftFile = {
   id: string;
