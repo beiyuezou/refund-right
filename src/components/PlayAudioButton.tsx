@@ -3,6 +3,7 @@ import { Loader2, Pause, Play, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 
 type Props = {
   text: string;
@@ -59,9 +60,18 @@ export function PlayAudioButton({ text, cacheKey, size = "sm" }: Props) {
     setState("loading");
     try {
       const lang = i18n.language?.startsWith("zh") ? "zh" : "en";
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        toast.error(t("voice.errTts"));
+        setState("idle");
+        return;
+      }
       const res = await fetch("/api/tts", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: JSON.stringify({ text, language: lang }),
       });
       if (!res.ok) {
