@@ -31,6 +31,8 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { useTranslation } from "react-i18next";
 import { VoiceInputButton } from "@/components/VoiceInputButton";
+import { useServerFn } from "@tanstack/react-start";
+import { validateAndRegisterEvidence } from "@/lib/evidence.functions";
 
 const categorySchema = z.object({
   category: z.enum(["hotel", "flight", "insurance"]),
@@ -60,6 +62,12 @@ const ICONS: Record<CategoryKey, typeof Building2> = {
 
 const MAX_FILES = 10;
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
+const ALLOWED_MIMES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "application/pdf",
+]);
 
 type DraftFile = {
   id: string;
@@ -83,6 +91,7 @@ function WizardPage() {
   const [currency, setCurrency] = useState("");
   const [files, setFiles] = useState<DraftFile[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const validateEvidence = useServerFn(validateAndRegisterEvidence);
 
   // Restore draft if redirected back from auth
   useEffect(() => {
@@ -132,6 +141,10 @@ function WizardPage() {
       }
       if (f.size > MAX_FILE_BYTES) {
         toast.error(t("wizard.errFileSize", { name: f.name }));
+        continue;
+      }
+      if (f.size === 0 || !ALLOWED_MIMES.has(f.type)) {
+        toast.error(t("wizard.errFileType", { name: f.name }));
         continue;
       }
       next.push({ id: crypto.randomUUID(), file: f });
@@ -207,14 +220,22 @@ function WizardPage() {
               console.warn("Upload failed", f.file.name, upErr);
               return;
             }
-            await supabase.from("dispute_evidence").insert({
-              dispute_id: dispute.id,
-              user_id: user.id,
-              storage_path: path,
-              file_name: f.file.name,
-              mime_type: f.file.type || null,
-              size_bytes: f.file.size,
-            });
+            try {
+              const result = await validateEvidence({
+                data: {
+                  dispute_id: dispute.id,
+                  storage_path: path,
+                  file_name: f.file.name,
+                  mime_type: f.file.type,
+                  size_bytes: f.file.size,
+                },
+              });
+              if (!result.ok) {
+                toast.error(t("wizard.errFileType", { name: f.file.name }));
+              }
+            } catch (err) {
+              if (import.meta.env.DEV) console.warn("validateEvidence", err);
+            }
           }),
         );
       }
@@ -428,7 +449,7 @@ function WizardPage() {
                   <input
                     type="file"
                     multiple
-                    accept="image/*,application/pdf"
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
                     className="hidden"
                     onChange={(e) => addFiles(e.target.files)}
                   />

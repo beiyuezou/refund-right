@@ -96,6 +96,7 @@ Deno.serve(async (req) => {
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
     if (!LOVABLE_API_KEY) {
@@ -105,12 +106,37 @@ Deno.serve(async (req) => {
     const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: authHeader } },
     });
+    const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const { data: userData, error: userErr } = await supabase.auth.getUser();
     if (userErr || !userData.user) {
       return json({ error: "Unauthorized" }, 401);
     }
     const userId = userData.user.id;
+
+    // Per-user rate limit: 10 / hour
+    const sinceIso = new Date(Date.now() - 3600 * 1000).toISOString();
+    const { count: recent } = await admin
+      .from("rate_limit_events")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+      .eq("action", "analyze")
+      .gte("created_at", sinceIso);
+    if ((recent ?? 0) >= 10) {
+      await admin.from("audit_logs").insert({
+        user_id: userId,
+        action: "rate_limit.exceeded",
+        metadata: { kind: "analyze" },
+      });
+      return new Response(
+        JSON.stringify({ error: "Too many requests", code: "rate_limited" }),
+        {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json", "Retry-After": "3600" },
+        },
+      );
+    }
+    await admin.from("rate_limit_events").insert({ user_id: userId, action: "analyze" });
 
     const body = (await req.json()) as { dispute_id: string; language?: string };
     if (!body?.dispute_id) {
@@ -295,10 +321,19 @@ Deno.serve(async (req) => {
 
     await supabase.from("disputes").update({ status: "analyzed" }).eq("id", dispute.id);
 
+    await admin.from("audit_logs").insert({
+      user_id: userId,
+      action: "analysis.run",
+      resource_type: "dispute_analyses",
+      resource_id: analysis.id,
+      metadata: { dispute_id: dispute.id, model, risk: parsed.risk_level },
+    });
+
     return json({ analysis_id: analysis.id });
   } catch (e) {
-    console.error("analyze-dispute unexpected error:", e);
-    return json({ error: "An unexpected error occurred. Please try again." }, 500);
+    const id = crypto.randomUUID();
+    console.error(`[analyze-dispute ${id}]`, e);
+    return json({ error: "Request failed", code: "internal" }, 500);
   }
 });
 

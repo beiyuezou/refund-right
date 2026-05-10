@@ -33,6 +33,8 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { type CategoryKey } from "@/lib/categories";
 import { PlayAudioButton } from "@/components/PlayAudioButton";
+import { useServerFn } from "@tanstack/react-start";
+import { saveDraftEmail } from "@/lib/analysis.functions";
 
 export const Route = createFileRoute("/analysis/$disputeId")({
   head: () => ({
@@ -90,6 +92,7 @@ function AnalysisPage() {
   const [saving, setSaving] = useState(false);
   const [edited, setEdited] = useState(false);
   const [pendingRerun, setPendingRerun] = useState<"en" | "zh" | "default" | null>(null);
+  const saveDraft = useServerFn(saveDraftEmail);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -164,12 +167,9 @@ function AnalysisPage() {
   async function saveEdit() {
     if (!analysis) return;
     setSaving(true);
-    const { error } = await supabase
-      .from("dispute_analyses")
-      .update({ draft_email: draft })
-      .eq("id", analysis.id);
+    const result = await saveDraft({ data: { analysis_id: analysis.id, draft_email: draft } }).catch(() => null);
     setSaving(false);
-    if (error) {
+    if (!result || !result.ok) {
       toast.error(t("analysis.saveFailed"));
       return;
     }
