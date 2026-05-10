@@ -338,6 +338,7 @@ const zh: typeof en = {
     errPrev: "请先完成前面的步骤。",
     errMaxFiles: "最多 {{n}} 个文件。",
     errFileSize: "{{name}} 超过 10 MB。",
+    errFileType: "{{name}} 文件类型不被允许（仅支持 JPG、PNG、WEBP、PDF）。",
     errSave: "无法保存申诉，请重试。",
     errAnalysis: "分析失败。请打开申诉重试。",
     signinPrompt: "请登录以保存申诉并获取分析。",
