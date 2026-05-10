@@ -31,7 +31,7 @@ export async function logEvent(input: AuditInput): Promise<void> {
       resource_id: input.resourceId ?? null,
       ip: input.ip ?? null,
       user_agent: input.userAgent ?? null,
-      metadata: input.metadata ?? {},
+      metadata: (input.metadata ?? {}) as never,
     });
   } catch (err) {
     console.error("audit log failed", err);
