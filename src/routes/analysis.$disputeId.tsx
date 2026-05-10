@@ -166,12 +166,9 @@ function AnalysisPage() {
   async function saveEdit() {
     if (!analysis) return;
     setSaving(true);
-    const { error } = await supabase
-      .from("dispute_analyses")
-      .update({ draft_email: draft })
-      .eq("id", analysis.id);
+    const result = await saveDraft({ data: { analysis_id: analysis.id, draft_email: draft } }).catch(() => null);
     setSaving(false);
-    if (error) {
+    if (!result || !result.ok) {
       toast.error(t("analysis.saveFailed"));
       return;
     }
