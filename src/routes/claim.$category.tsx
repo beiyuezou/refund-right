@@ -449,7 +449,7 @@ function WizardPage() {
                   <input
                     type="file"
                     multiple
-                    accept="image/*,application/pdf"
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
                     className="hidden"
                     onChange={(e) => addFiles(e.target.files)}
                   />
