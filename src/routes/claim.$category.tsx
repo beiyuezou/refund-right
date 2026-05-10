@@ -142,6 +142,10 @@ function WizardPage() {
         toast.error(t("wizard.errFileSize", { name: f.name }));
         continue;
       }
+      if (f.size === 0 || !ALLOWED_MIMES.has(f.type)) {
+        toast.error(t("wizard.errFileType", { name: f.name }));
+        continue;
+      }
       next.push({ id: crypto.randomUUID(), file: f });
     }
     setFiles(next);
