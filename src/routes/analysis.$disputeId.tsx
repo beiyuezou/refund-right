@@ -13,10 +13,22 @@ import {
   ShieldAlert,
   Sparkles,
   Languages,
+  Pencil,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { SiteHeader, SiteFooter } from "@/components/SiteChrome";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { type CategoryKey } from "@/lib/categories";
@@ -73,6 +85,11 @@ function AnalysisPage() {
   const [retrying, setRetrying] = useState(false);
   const [retryLang, setRetryLang] = useState<"en" | "zh" | null>(null);
   const [showFullEmail, setShowFullEmail] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [edited, setEdited] = useState(false);
+  const [pendingRerun, setPendingRerun] = useState<"en" | "zh" | "default" | null>(null);
 
   const load = useCallback(async () => {
     if (!user) return;
@@ -126,12 +143,40 @@ function AnalysisPage() {
         toast.error(t("analysis.reanalyzeFailed"));
       } else {
         toast.success(t("analysis.reanalyzing"));
+        setEdited(false);
+        setEditing(false);
         await load();
       }
     } finally {
       setRetrying(false);
       setRetryLang(null);
     }
+  }
+
+  function requestRerun(language?: "en" | "zh") {
+    if (editing || edited) {
+      setPendingRerun(language ?? "default");
+      return;
+    }
+    rerun(language);
+  }
+
+  async function saveEdit() {
+    if (!analysis) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("dispute_analyses")
+      .update({ draft_email: draft })
+      .eq("id", analysis.id);
+    setSaving(false);
+    if (error) {
+      toast.error(t("analysis.saveFailed"));
+      return;
+    }
+    setAnalysis({ ...analysis, draft_email: draft });
+    setEditing(false);
+    setEdited(true);
+    toast.success(t("analysis.saved"));
   }
 
   if (authLoading || loading) {
@@ -219,8 +264,8 @@ function AnalysisPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => rerun("en")}
-                disabled={retrying}
+                onClick={() => requestRerun("en")}
+                disabled={retrying || editing}
                 className="gap-1.5"
                 title={t("analysis.regenInEnglish")}
               >
@@ -234,8 +279,8 @@ function AnalysisPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => rerun("zh")}
-                disabled={retrying}
+                onClick={() => requestRerun("zh")}
+                disabled={retrying || editing}
                 className="gap-1.5"
                 title={t("analysis.regenInChinese")}
               >
@@ -249,8 +294,8 @@ function AnalysisPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => rerun()}
-                disabled={retrying}
+                onClick={() => requestRerun()}
+                disabled={retrying || editing}
                 className="gap-1.5"
               >
                 {retrying && retryLang === null ? (
@@ -333,44 +378,101 @@ function AnalysisPage() {
           {/* Draft email */}
           <section className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-card">
             <div className="flex items-center justify-between gap-3 flex-wrap">
-              <h2 className="text-lg font-semibold text-primary">{t("analysis.draftEmail")}</h2>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-lg font-semibold text-primary">{t("analysis.draftEmail")}</h2>
+                {edited && !editing && (
+                  <span className="inline-flex items-center rounded-full bg-accent/15 text-accent px-2 py-0.5 text-xs font-semibold">
+                    {t("analysis.editedBadge")}
+                  </span>
+                )}
+              </div>
               <div className="flex gap-2">
-                <PlayAudioButton text={analysis.draft_email} cacheKey={`email-${analysis.id}`} />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={async () => {
-                    await navigator.clipboard.writeText(analysis.draft_email);
-                    toast.success(t("analysis.copied"));
-                  }}
-                  className="gap-1.5"
-                >
-                  <Copy className="h-3.5 w-3.5" /> {t("analysis.copy")}
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => downloadText(analysis.draft_email, `complaint-${dispute.id.slice(0, 8)}.txt`)}
-                  className="gap-1.5"
-                >
-                  <Download className="h-3.5 w-3.5" /> {t("analysis.download")}
-                </Button>
+                {editing ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setEditing(false)}
+                      disabled={saving}
+                    >
+                      {t("analysis.cancel")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={saveEdit}
+                      disabled={saving || !draft.trim()}
+                      className="gap-1.5 bg-accent text-accent-foreground hover:opacity-95"
+                    >
+                      {saving ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Check className="h-3.5 w-3.5" />
+                      )}
+                      {saving ? t("analysis.saving") : t("analysis.save")}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <PlayAudioButton text={analysis.draft_email} cacheKey={`email-${analysis.id}`} />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setDraft(analysis.draft_email);
+                        setEditing(true);
+                      }}
+                      className="gap-1.5"
+                    >
+                      <Pencil className="h-3.5 w-3.5" /> {t("analysis.edit")}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        await navigator.clipboard.writeText(analysis.draft_email);
+                        toast.success(t("analysis.copied"));
+                      }}
+                      className="gap-1.5"
+                    >
+                      <Copy className="h-3.5 w-3.5" /> {t("analysis.copy")}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => downloadText(analysis.draft_email, `complaint-${dispute.id.slice(0, 8)}.txt`)}
+                      className="gap-1.5"
+                    >
+                      <Download className="h-3.5 w-3.5" /> {t("analysis.download")}
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
-            <pre
-              className={`mt-4 whitespace-pre-wrap rounded-lg border border-border bg-secondary/30 p-4 text-sm text-foreground font-sans leading-relaxed overflow-hidden ${showFullEmail ? "" : "max-h-80"}`}
-            >
-              {analysis.draft_email}
-            </pre>
-            <div className="mt-2 flex justify-end">
-              <button
-                type="button"
-                onClick={() => setShowFullEmail((s) => !s)}
-                className="text-sm font-semibold text-accent hover:underline"
-              >
-                {showFullEmail ? t("analysis.showLess") : t("analysis.showFull")}
-              </button>
-            </div>
+            {editing ? (
+              <Textarea
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                className="mt-4 min-h-[24rem] font-sans text-sm leading-relaxed"
+                disabled={saving}
+              />
+            ) : (
+              <>
+                <pre
+                  className={`mt-4 whitespace-pre-wrap rounded-lg border border-border bg-secondary/30 p-4 text-sm text-foreground font-sans leading-relaxed overflow-hidden ${showFullEmail ? "" : "max-h-80"}`}
+                >
+                  {analysis.draft_email}
+                </pre>
+                <div className="mt-2 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setShowFullEmail((s) => !s)}
+                    className="text-sm font-semibold text-accent hover:underline"
+                  >
+                    {showFullEmail ? t("analysis.showLess") : t("analysis.showFull")}
+                  </button>
+                </div>
+              </>
+            )}
             <p className="mt-3 inline-flex items-center gap-1.5 text-xs text-muted-foreground">
               <Check className="h-3.5 w-3.5 text-accent" /> {t("analysis.autoSaved")}
             </p>
@@ -381,6 +483,31 @@ function AnalysisPage() {
       <p className="mt-8 rounded-md border border-border bg-secondary/40 p-3 text-xs text-muted-foreground">
         <strong className="text-primary">{t("analysis.disclaimer")}</strong> {t("analysis.disclaimerBody")}
       </p>
+
+      <AlertDialog
+        open={pendingRerun !== null}
+        onOpenChange={(open) => !open && setPendingRerun(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("analysis.reanalyzeWarnTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>{t("analysis.reanalyzeWarnBody")}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("analysis.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const lang = pendingRerun;
+                setPendingRerun(null);
+                if (lang === "en" || lang === "zh") rerun(lang);
+                else rerun();
+              }}
+            >
+              {t("analysis.reanalyzeConfirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Shell>
   );
 }

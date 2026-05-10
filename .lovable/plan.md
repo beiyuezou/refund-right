@@ -1,42 +1,65 @@
-## Problem
+# Edit Draft Complaint Email
 
-Sarah's playback sounds robotic and unnatural on both the recommendation and the draft email. Two root causes:
+Add an "Edit" button next to the existing Listen / Copy / Download buttons on the draft complaint email so users can manually revise the AI-generated text. Edits persist to the database, and re-analyzing warns before overwriting.
 
-1. **Voice settings are off for narration.** Current `style: 0.3` with `stability: 0.55` on `eleven_multilingual_v2` makes Sarah over-emote and mis-pace, especially on legal/formal text. ElevenLabs' own guidance for narration is `stability 0.5–0.7`, `similarity_boost 0.75`, `style 0` (style >0 is the main cause of "weird tone").
-2. **Bilingual text trips the model.** The draft email is `English (中文翻译)` with Chinese in parentheses. The model tries to read the brackets and code-switches mid-sentence, producing the choppy/odd prosody. The recommendation in zh mode also mixes punctuation styles.
+## UX
 
-## Fix
+In `src/routes/analysis.$disputeId.tsx`, the Draft Email section gains an **Edit** button (pencil icon) in the action row.
 
-### 1. Tune TTS voice settings (`src/routes/api/tts.ts`)
-- `stability: 0.6`
-- `similarity_boost: 0.8`
-- `style: 0` (remove exaggeration — biggest win)
-- `use_speaker_boost: true`
-- Keep model `eleven_multilingual_v2` (best for EN+中文 mix).
-- Accept an optional `language` hint from the client so we can pick voice settings per language later if needed.
+- Clicking **Edit** swaps the read-only `<pre>` for a `<Textarea>` pre-filled with the current draft, plus **Save** and **Cancel** buttons.
+- While editing: Listen / Copy / Download / Show full / Re-analyze are disabled to avoid acting on stale text.
+- **Save** writes the new text to `dispute_analyses.draft_email`, updates local state, exits edit mode, and shows a success toast.
+- **Cancel** restores the original text and exits without saving.
+- A small "Edited by you" badge appears under the heading once the user has saved a manual edit (tracked locally for the session; no schema change).
 
-### 2. Pre-process text before sending to ElevenLabs
-Add a small `prepareTtsText(text, mode)` helper used by `PlayAudioButton` (or done server-side in `/api/tts`). It will:
-- Collapse multiple blank lines and normalize whitespace.
-- Replace markdown artifacts (`**`, `__`, backticks, leading `- `, `#`) with plain text.
-- Normalize punctuation: convert Chinese full-width punctuation `，。！？：；` to ASCII when surrounding text is English, and vice-versa, so prosody breaks land correctly.
-- For the draft email specifically: strip the `(中文翻译)` parenthetical translations when the UI language is English, and strip the English when the UI language is Chinese. This single change removes the main source of choppiness.
+## Re-analyze guard
 
-### 3. Pass UI language to TTS
-- `PlayAudioButton` will read `i18n.language` and send `{ text, language: 'en' | 'zh' }` to `/api/tts`.
-- Server uses `language` to (a) decide which side of the bilingual content to keep and (b) leave model selection unchanged for now.
+Currently the EN / 中文 / Reanalyze buttons call `rerun()` immediately. We add a confirmation step using the existing `AlertDialog` component:
 
-### 4. Single-instance playback safety (small polish)
-`PlayAudioButton` already manages its own audio element, but two different cards (recommendation + email) can play simultaneously. Add a tiny module-level "current audio" registry so starting one playback pauses any other. Prevents the "two voices at once" overlap noted in the shared-pattern hint.
+- If the user is in edit mode OR has saved manual edits this session, clicking any re-analyze button opens an AlertDialog: *"Re-analyzing will replace your edited email with a new AI version. Continue?"*
+- Confirm → proceed with `rerun(lang)`. Cancel → close dialog, no change.
+- If no edits have been made, behavior is unchanged.
 
-## Out of scope (ask before doing)
-- Switching to `eleven_turbo_v2_5` or `eleven_v3`.
-- Splitting long text into chunks with request stitching.
-- Adding a per-card volume/speed slider.
+## Persistence
 
-## Files touched
-- `src/routes/api/tts.ts` — voice settings, accept `language`, optional bilingual stripping.
-- `src/components/PlayAudioButton.tsx` — send `language`, share a single active-audio ref across instances.
-- (Optional) `src/lib/tts-text.ts` — new helper for text normalization / bilingual stripping, imported by the server route.
+`dispute_analyses` currently has no UPDATE RLS policy (per schema). We need to add one so users can update their own analyses:
 
-No DB, auth, or schema changes. ElevenLabs connector key already configured.
+```sql
+CREATE POLICY "Analyses update own"
+ON public.dispute_analyses
+FOR UPDATE
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id);
+```
+
+The save itself uses the browser Supabase client:
+```ts
+await supabase
+  .from("dispute_analyses")
+  .update({ draft_email: edited })
+  .eq("id", analysis.id);
+```
+
+## i18n
+
+Add translation keys (EN + ZH) under `analysis.*` in `src/lib/i18n.ts`:
+- `edit` — "Edit" / "编辑"
+- `save` — "Save" / "保存"
+- `cancel` — "Cancel" / "取消"
+- `saved` — "Email updated" / "邮件已更新"
+- `editedBadge` — "Edited by you" / "已手动编辑"
+- `reanalyzeWarnTitle` — "Replace your edits?" / "替换您的修改？"
+- `reanalyzeWarnBody` — "Re-analyzing will overwrite your manually edited email with a new AI version." / "重新分析会用新的 AI 版本覆盖您手动编辑的邮件。"
+- `reanalyzeConfirm` — "Replace" / "替换"
+
+## Out of scope
+
+- Editing recommendation text or leverage points
+- Versioning / undo history of past drafts
+- A schema column to mark "manually edited" (kept session-local)
+
+## Files
+
+- Migration: add UPDATE RLS policy on `dispute_analyses`
+- Edit `src/routes/analysis.$disputeId.tsx` — Edit button, textarea, save handler, AlertDialog re-analyze guard
+- Edit `src/lib/i18n.ts` — new translation keys (EN + ZH)
