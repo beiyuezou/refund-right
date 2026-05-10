@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { getRequestHeader } from "@tanstack/react-start/server";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { checkAndRecord } from "@/lib/rate-limit.server";
@@ -117,4 +118,96 @@ export const validateAndRegisterEvidence = createServerFn({ method: "POST" })
     });
 
     return { ok: true as const, id: row.id };
+  });
+
+const StagedInput = z.object({
+  storage_path: z.string().min(1).max(512),
+  file_name: z.string().min(1).max(255),
+  mime_type: z.string().min(1).max(128),
+  size_bytes: z.number().int().nonnegative().max(MAX_BYTES),
+});
+
+export const logEvidenceStaged = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => StagedInput.parse(data))
+  .handler(async ({ data, context }) => {
+    const { userId } = context;
+    if (!data.storage_path.startsWith(`${userId}/`)) {
+      return { ok: false as const, code: "path_scope" };
+    }
+    const ua = getRequestHeader("user-agent") ?? null;
+    await logEvent({
+      userId,
+      action: "evidence.staged",
+      resourceType: "storage.evidence",
+      userAgent: ua,
+      metadata: {
+        path: data.storage_path,
+        file_name: data.file_name,
+        mime: data.mime_type,
+        size: data.size_bytes,
+      },
+    });
+    return { ok: true as const };
+  });
+
+const RemovedInput = z.object({
+  storage_path: z.string().min(1).max(512),
+  file_name: z.string().min(1).max(255),
+  was_finalized: z.boolean().optional(),
+});
+
+export const logEvidenceRemoved = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => RemovedInput.parse(data))
+  .handler(async ({ data, context }) => {
+    const { userId } = context;
+    if (!data.storage_path.startsWith(`${userId}/`)) {
+      return { ok: false as const, code: "path_scope" };
+    }
+    const ua = getRequestHeader("user-agent") ?? null;
+    await logEvent({
+      userId,
+      action: "evidence.removed",
+      resourceType: "storage.evidence",
+      userAgent: ua,
+      metadata: {
+        path: data.storage_path,
+        file_name: data.file_name,
+        was_finalized: data.was_finalized ?? false,
+      },
+    });
+    return { ok: true as const };
+  });
+
+const DisputeCreatedInput = z.object({
+  dispute_id: z.string().uuid(),
+  category: z.string().min(1).max(64),
+  country: z.string().min(1).max(64),
+});
+
+export const logDisputeCreated = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => DisputeCreatedInput.parse(data))
+  .handler(async ({ data, context }) => {
+    const { userId, supabase } = context;
+    // Verify the dispute belongs to this user (RLS-scoped read)
+    const { data: row } = await supabase
+      .from("disputes")
+      .select("id")
+      .eq("id", data.dispute_id)
+      .maybeSingle();
+    if (!row) {
+      return { ok: false as const, code: "not_found" };
+    }
+    const ua = getRequestHeader("user-agent") ?? null;
+    await logEvent({
+      userId,
+      action: "dispute.created",
+      resourceType: "disputes",
+      resourceId: data.dispute_id,
+      userAgent: ua,
+      metadata: { category: data.category, country: data.country },
+    });
+    return { ok: true as const };
   });
