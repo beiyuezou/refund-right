@@ -1,9 +1,33 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { createClient } from "@supabase/supabase-js";
+
+const ALLOWED_LANGS = new Set(["eng", "zho", "cmn", "tha", "msa", "vie"]);
 
 export const Route = createFileRoute("/api/transcribe-audio")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        // Require authenticated Supabase session
+        const authHeader = request.headers.get("authorization") || "";
+        const token = authHeader.startsWith("Bearer ")
+          ? authHeader.slice(7).trim()
+          : "";
+        if (!token) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        const SUPABASE_URL = process.env.SUPABASE_URL;
+        const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
+        if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+          return Response.json({ error: "Server misconfigured" }, { status: 500 });
+        }
+        const sb = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+          auth: { persistSession: false, autoRefreshToken: false },
+        });
+        const { data: claims, error: authErr } = await sb.auth.getClaims(token);
+        if (authErr || !claims?.claims?.sub) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
         const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
         if (!ELEVENLABS_API_KEY) {
           return Response.json({ error: "ELEVENLABS_API_KEY not configured" }, { status: 500 });
@@ -24,7 +48,8 @@ export const Route = createFileRoute("/api/transcribe-audio")({
           return Response.json({ error: "Audio too large (max 25MB)" }, { status: 413 });
         }
 
-        const language = (form.get("language") || "").toString();
+        const rawLang = (form.get("language") || "").toString().toLowerCase();
+        const language = ALLOWED_LANGS.has(rawLang) ? rawLang : "";
 
         const upstream = new FormData();
         upstream.append("file", audio, (audio as File).name || "audio.webm");
@@ -42,13 +67,8 @@ export const Route = createFileRoute("/api/transcribe-audio")({
         if (!res.ok) {
           const errText = await res.text().catch(() => "");
           console.error("ElevenLabs STT error", res.status, errText);
-          let detail = "";
-          try {
-            const j = JSON.parse(errText);
-            detail = j?.detail?.message || j?.detail || j?.message || "";
-          } catch { /* ignore */ }
           return Response.json(
-            { error: detail || "Transcription failed" },
+            { error: "Transcription failed" },
             { status: 502 },
           );
         }

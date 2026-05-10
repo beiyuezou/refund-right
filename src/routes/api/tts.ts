@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { prepareTtsText } from "@/lib/tts-text";
+import { createClient } from "@supabase/supabase-js";
 
 const Body = z.object({
   text: z.string().min(1).max(5000),
@@ -14,6 +15,27 @@ export const Route = createFileRoute("/api/tts")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        // Require authenticated Supabase session
+        const authHeader = request.headers.get("authorization") || "";
+        const token = authHeader.startsWith("Bearer ")
+          ? authHeader.slice(7).trim()
+          : "";
+        if (!token) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+        const SUPABASE_URL = process.env.SUPABASE_URL;
+        const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
+        if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+          return Response.json({ error: "Server misconfigured" }, { status: 500 });
+        }
+        const sb = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+          auth: { persistSession: false, autoRefreshToken: false },
+        });
+        const { data: claims, error: authErr } = await sb.auth.getClaims(token);
+        if (authErr || !claims?.claims?.sub) {
+          return Response.json({ error: "Unauthorized" }, { status: 401 });
+        }
+
         const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
         if (!ELEVENLABS_API_KEY) {
           return Response.json({ error: "ELEVENLABS_API_KEY not configured" }, { status: 500 });
