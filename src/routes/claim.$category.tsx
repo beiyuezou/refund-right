@@ -91,6 +91,7 @@ function WizardPage() {
   const [currency, setCurrency] = useState("");
   const [files, setFiles] = useState<DraftFile[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const validateEvidence = useServerFn(validateAndRegisterEvidence);
 
   // Restore draft if redirected back from auth
   useEffect(() => {
