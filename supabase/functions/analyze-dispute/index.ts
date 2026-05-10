@@ -263,12 +263,14 @@ Deno.serve(async (req) => {
         );
       }
       if (aiRes.status === 402) {
+        console.error("[analyze-dispute] AI gateway 402 — credits exhausted");
         return json(
           {
             error:
-              "AI credits exhausted. Add credits in Settings → Workspace → Usage.",
+              "Analysis service is temporarily unavailable. Please try again later.",
+            code: "service_unavailable",
           },
-          402,
+          503,
         );
       }
       const errText = await aiRes.text();
