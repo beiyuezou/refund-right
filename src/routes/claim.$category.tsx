@@ -69,10 +69,20 @@ const ALLOWED_MIMES = new Set([
   "application/pdf",
 ]);
 
-type DraftFile = {
+type EvidenceItem = {
   id: string;
   file: File;
+  status: "uploading" | "uploaded" | "error";
+  storagePath?: string;
+  error?: string;
 };
+
+function sanitizeFileName(name: string): string {
+  // Strip directory components and replace unsafe chars
+  const base = name.split(/[\\/]/).pop() ?? "file";
+  const cleaned = base.replace(/[^a-zA-Z0-9._-]/g, "_").replace(/_+/g, "_");
+  return cleaned.slice(0, 200) || "file";
+}
 
 function WizardPage() {
   const { t, i18n } = useTranslation();
@@ -89,7 +99,7 @@ function WizardPage() {
   const [incidentDate, setIncidentDate] = useState("");
   const [amount, setAmount] = useState("");
   const [currency, setCurrency] = useState("");
-  const [files, setFiles] = useState<DraftFile[]>([]);
+  const [files, setFiles] = useState<EvidenceItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const validateEvidence = useServerFn(validateAndRegisterEvidence);
 
@@ -131,9 +141,35 @@ function WizardPage() {
     setStep((s) => (s > 1 ? ((s - 1) as 1 | 2 | 3) : s));
   }
 
+  async function uploadOne(item: EvidenceItem, userId: string) {
+    const safeName = sanitizeFileName(item.file.name);
+    const path = `${userId}/_staging/${item.id}-${safeName}`;
+    const { error: upErr } = await supabase.storage
+      .from("evidence")
+      .upload(path, item.file, {
+        contentType: item.file.type || "application/octet-stream",
+        upsert: false,
+      });
+    if (upErr) {
+      setFiles((cur) =>
+        cur.map((f) =>
+          f.id === item.id ? { ...f, status: "error", error: upErr.message } : f,
+        ),
+      );
+      toast.error(t("wizard.errUpload", { name: item.file.name }));
+      return;
+    }
+    setFiles((cur) =>
+      cur.map((f) =>
+        f.id === item.id ? { ...f, status: "uploaded", storagePath: path } : f,
+      ),
+    );
+  }
+
   function addFiles(list: FileList | null) {
     if (!list) return;
-    const next: DraftFile[] = [...files];
+    const next: EvidenceItem[] = [...files];
+    const toUpload: EvidenceItem[] = [];
     for (const f of Array.from(list)) {
       if (next.length >= MAX_FILES) {
         toast.error(t("wizard.errMaxFiles", { n: MAX_FILES }));
@@ -147,9 +183,35 @@ function WizardPage() {
         toast.error(t("wizard.errFileType", { name: f.name }));
         continue;
       }
-      next.push({ id: crypto.randomUUID(), file: f });
+      const item: EvidenceItem = {
+        id: crypto.randomUUID(),
+        file: f,
+        status: user ? "uploading" : "uploaded",
+      };
+      next.push(item);
+      if (user) toUpload.push(item);
     }
     setFiles(next);
+    if (user) {
+      for (const it of toUpload) void uploadOne(it, user.id);
+    }
+  }
+
+  async function removeFile(id: string) {
+    const item = files.find((f) => f.id === id);
+    if (!item) return;
+    // Optimistically remove from UI
+    setFiles((cur) => cur.filter((f) => f.id !== id));
+    if (item.storagePath && user) {
+      const { error } = await supabase.storage
+        .from("evidence")
+        .remove([item.storagePath]);
+      if (error) {
+        toast.error(t("wizard.errDelete", { name: item.file.name }));
+        // Re-add so the user can retry
+        setFiles((cur) => [...cur, item]);
+      }
+    }
   }
 
   async function submit() {
@@ -205,27 +267,19 @@ function WizardPage() {
         return;
       }
 
-      // Upload evidence files (best-effort: failures don't block analysis)
-      if (files.length > 0) {
+      // Finalize evidence: register staged uploads against the new dispute
+      const finalizable = files.filter(
+        (f) => f.status === "uploaded" && f.storagePath,
+      );
+      if (finalizable.length > 0) {
         await Promise.all(
-          files.map(async (f) => {
-            const path = `${user.id}/${dispute.id}/${crypto.randomUUID()}-${f.file.name}`;
-            const { error: upErr } = await supabase.storage
-              .from("evidence")
-              .upload(path, f.file, {
-                contentType: f.file.type || "application/octet-stream",
-                upsert: false,
-              });
-            if (upErr) {
-              console.warn("Upload failed", f.file.name, upErr);
-              return;
-            }
+          finalizable.map(async (f) => {
             try {
               const result = await validateEvidence({
                 data: {
                   dispute_id: dispute.id,
-                  storage_path: path,
-                  file_name: f.file.name,
+                  storage_path: f.storagePath!,
+                  file_name: sanitizeFileName(f.file.name),
                   mime_type: f.file.type,
                   size_bytes: f.file.size,
                 },
@@ -464,21 +518,44 @@ function WizardPage() {
                       >
                         <div className="min-w-0">
                           <p className="font-medium text-primary truncate">{f.file.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {(f.file.size / 1024).toFixed(1)} KB
+                          <p className="text-xs text-muted-foreground flex items-center gap-2">
+                            <span>{(f.file.size / 1024).toFixed(1)} KB</span>
+                            {f.status === "uploading" && (
+                              <span className="inline-flex items-center gap-1 text-muted-foreground">
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                                {t("wizard.evidenceUploading")}
+                              </span>
+                            )}
+                            {f.status === "uploaded" && user && (
+                              <span className="inline-flex items-center gap-1 text-accent">
+                                <Check className="h-3 w-3" />
+                                {t("wizard.evidenceUploaded")}
+                              </span>
+                            )}
+                            {f.status === "error" && (
+                              <span className="text-destructive">
+                                {t("wizard.evidenceFailed")}
+                              </span>
+                            )}
                           </p>
                         </div>
                         <button
                           type="button"
-                          onClick={() => setFiles((cur) => cur.filter((x) => x.id !== f.id))}
+                          onClick={() => removeFile(f.id)}
                           className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-destructive"
-                          aria-label={`Remove ${f.file.name}`}
+                          aria-label={t("wizard.evidenceRemove") + " " + f.file.name}
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </li>
                     ))}
                   </ul>
+                )}
+
+                {!user && (
+                  <p className="text-xs text-muted-foreground rounded-md bg-secondary/40 border border-border p-3">
+                    {t("wizard.signInToUpload")}
+                  </p>
                 )}
 
                 <p className="text-xs text-muted-foreground rounded-md bg-secondary/40 border border-border p-3">
