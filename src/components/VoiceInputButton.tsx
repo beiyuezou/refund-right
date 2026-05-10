@@ -3,6 +3,7 @@ import { Loader2, Mic, Square } from "lucide-react";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
+import { supabase } from "@/integrations/supabase/client";
 
 type Props = {
   onTranscript: (text: string) => void;
@@ -59,7 +60,17 @@ export function VoiceInputButton({ onTranscript, language, disabled }: Props) {
       fd.append("audio", blob, "recording.webm");
       if (language) fd.append("language", language);
 
-      const res = await fetch("/api/transcribe-audio", { method: "POST", body: fd });
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        toast.error(t("voice.errTranscribe"));
+        setState("idle");
+        return;
+      }
+      const res = await fetch("/api/transcribe-audio", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: fd,
+      });
       if (!res.ok) {
         toast.error(t("voice.errTranscribe"));
         setState("idle");
