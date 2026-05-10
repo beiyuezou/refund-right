@@ -32,7 +32,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useTranslation } from "react-i18next";
 import { VoiceInputButton } from "@/components/VoiceInputButton";
 import { useServerFn } from "@tanstack/react-start";
-import { validateAndRegisterEvidence } from "@/lib/evidence.functions";
+import {
+  validateAndRegisterEvidence,
+  logEvidenceStaged,
+  logEvidenceRemoved,
+  logDisputeCreated,
+} from "@/lib/evidence.functions";
 
 const categorySchema = z.object({
   category: z.enum(["hotel", "flight", "insurance"]),
@@ -102,6 +107,9 @@ function WizardPage() {
   const [files, setFiles] = useState<EvidenceItem[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const validateEvidence = useServerFn(validateAndRegisterEvidence);
+  const auditStaged = useServerFn(logEvidenceStaged);
+  const auditRemoved = useServerFn(logEvidenceRemoved);
+  const auditDisputeCreated = useServerFn(logDisputeCreated);
 
   // Restore draft if redirected back from auth
   useEffect(() => {
@@ -164,6 +172,19 @@ function WizardPage() {
         f.id === item.id ? { ...f, status: "uploaded", storagePath: path } : f,
       ),
     );
+    // Best-effort audit log for staging upload
+    try {
+      await auditStaged({
+        data: {
+          storage_path: path,
+          file_name: safeName,
+          mime_type: item.file.type,
+          size_bytes: item.file.size,
+        },
+      });
+    } catch (err) {
+      if (import.meta.env.DEV) console.warn("auditStaged", err);
+    }
   }
 
   function addFiles(list: FileList | null) {
@@ -210,6 +231,18 @@ function WizardPage() {
         toast.error(t("wizard.errDelete", { name: item.file.name }));
         // Re-add so the user can retry
         setFiles((cur) => [...cur, item]);
+        return;
+      }
+      try {
+        await auditRemoved({
+          data: {
+            storage_path: item.storagePath,
+            file_name: sanitizeFileName(item.file.name),
+            was_finalized: false,
+          },
+        });
+      } catch (err) {
+        if (import.meta.env.DEV) console.warn("auditRemoved", err);
       }
     }
   }
@@ -265,6 +298,19 @@ function WizardPage() {
         console.error(dErr);
         toast.error(t("wizard.errSave"));
         return;
+      }
+
+      // Best-effort audit: dispute created
+      try {
+        await auditDisputeCreated({
+          data: {
+            dispute_id: dispute.id,
+            category,
+            country,
+          },
+        });
+      } catch (err) {
+        if (import.meta.env.DEV) console.warn("auditDisputeCreated", err);
       }
 
       // Finalize evidence: register staged uploads against the new dispute
