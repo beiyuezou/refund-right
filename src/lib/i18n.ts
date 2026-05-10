@@ -107,6 +107,7 @@ const en = {
     errPrev: "Please complete the previous steps.",
     errMaxFiles: "Max {{n}} files.",
     errFileSize: "{{name}} is larger than 10 MB.",
+    errFileType: "{{name}} is not an allowed file type (JPG, PNG, WEBP, PDF only).",
     errSave: "Could not save dispute. Please try again.",
     errAnalysis: "Analysis failed. Open your dispute to retry.",
     signinPrompt: "Sign in to save your dispute and get analysis.",
