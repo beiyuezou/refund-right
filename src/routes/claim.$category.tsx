@@ -31,6 +31,7 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { useTranslation } from "react-i18next";
 import { VoiceInputButton } from "@/components/VoiceInputButton";
+import { AnalyzingShimmer } from "@/components/AnalyzingShimmer";
 import { useServerFn } from "@tanstack/react-start";
 import {
   validateAndRegisterEvidence,
