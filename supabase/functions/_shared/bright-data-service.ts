@@ -16,7 +16,9 @@ export type OtaSlug =
   | "fliggy"
   | "ctrip"
   | "qunar"
-  | "klook";
+  | "klook"
+  | "sg_case"
+  | "sg_cccs";
 
 type AllowEntry = { url: string; aliases: string[] };
 
@@ -29,11 +31,11 @@ const ALLOWLIST: Record<OtaSlug, AllowEntry> = {
   },
   booking: {
     url: "https://www.booking.com/content/cancellation.html",
-    aliases: ["booking.com", "booking ", "缤客"],
+    aliases: ["booking.com", "缤客"],
   },
   trip: {
     url: "https://www.trip.com/customerservice/refund-policy",
-    aliases: ["trip.com", "trip "],
+    aliases: ["trip.com", "携程国际", "trip平台"],
   },
   fliggy: {
     url: "https://help.fliggy.com/hc/category/help_index",
@@ -50,6 +52,17 @@ const ALLOWLIST: Record<OtaSlug, AllowEntry> = {
   klook: {
     url: "https://www.klook.com/en-US/policy/cancellation/",
     aliases: ["klook", "客路"],
+  },
+  // Singapore legal / consumer-protection ground truth sources.
+  // These are matched by country (see detectLegalSources), not by story alias,
+  // so the aliases array is intentionally empty.
+  sg_case: {
+    url: "https://www.case.org.sg/consumer_guides/",
+    aliases: [],
+  },
+  sg_cccs: {
+    url: "https://www.cccs.gov.sg/legislation/consumer-protection-fair-trading-act",
+    aliases: [],
   },
 };
 
@@ -70,6 +83,7 @@ export function detectOtaFromStory(
     OtaSlug,
     AllowEntry,
   ][]) {
+    if (entry.aliases.length === 0) continue; // skip legal-only sources
     for (const alias of entry.aliases) {
       if (lower.includes(alias.toLowerCase())) {
         return { ota: slug, url: entry.url };
@@ -77,6 +91,22 @@ export function detectOtaFromStory(
     }
   }
   return null;
+}
+
+// Map dispute.country -> legal source slugs to fetch in addition to any OTA.
+const LEGAL_SOURCES_BY_COUNTRY: Record<string, OtaSlug[]> = {
+  singapore: ["sg_case", "sg_cccs"],
+  sg: ["sg_case", "sg_cccs"],
+};
+
+export function detectLegalSources(
+  country: string | null | undefined,
+): { slug: OtaSlug; url: string }[] {
+  if (!country) return [];
+  const key = country.trim().toLowerCase();
+  const slugs = LEGAL_SOURCES_BY_COUNTRY[key];
+  if (!slugs) return [];
+  return slugs.map((s) => ({ slug: s, url: ALLOWLIST[s].url }));
 }
 
 function stripHtml(html: string): string {
@@ -203,12 +233,15 @@ export async function fetchOtaRules(
     });
 
     if (!res.ok) {
+      let errBody = "";
+      try { errBody = (await res.text()).slice(0, 500); } catch { /* ignore */ }
       console.error(
-        `[bright-data] upstream ${res.status} for ${ota}`,
+        `[bright-data] upstream ${res.status} for ${ota}: ${errBody}`,
       );
       await audit(admin, userId, "bright_data.fetch_failed", {
         ota,
         status: res.status,
+        body_preview: errBody,
       });
       if (cached) {
         return { content: cached.raw_content as string, source: "stale_cache" };
