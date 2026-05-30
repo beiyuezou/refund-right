@@ -71,7 +71,7 @@ const ALLOWED_HOSTS = new Set(
 );
 
 const CACHE_TTL_MS = 7 * 24 * 3600 * 1000; // 7 days
-const FETCH_TIMEOUT_MS = 12_000;
+const FETCH_TIMEOUT_MS = 45_000;
 const MAX_CONTENT_BYTES = 40_000;
 
 export function detectOtaFromStory(
