@@ -31,11 +31,11 @@ const ALLOWLIST: Record<OtaSlug, AllowEntry> = {
   },
   booking: {
     url: "https://www.booking.com/content/cancellation.html",
-    aliases: ["booking.com", "booking ", "缤客"],
+    aliases: ["booking.com", "缤客"],
   },
   trip: {
     url: "https://www.trip.com/customerservice/refund-policy",
-    aliases: ["trip.com", "trip "],
+    aliases: ["trip.com", "携程国际", "trip平台"],
   },
   fliggy: {
     url: "https://help.fliggy.com/hc/category/help_index",
@@ -233,12 +233,15 @@ export async function fetchOtaRules(
     });
 
     if (!res.ok) {
+      let errBody = "";
+      try { errBody = (await res.text()).slice(0, 500); } catch { /* ignore */ }
       console.error(
-        `[bright-data] upstream ${res.status} for ${ota}`,
+        `[bright-data] upstream ${res.status} for ${ota}: ${errBody}`,
       );
       await audit(admin, userId, "bright_data.fetch_failed", {
         ota,
         status: res.status,
+        body_preview: errBody,
       });
       if (cached) {
         return { content: cached.raw_content as string, source: "stale_cache" };
