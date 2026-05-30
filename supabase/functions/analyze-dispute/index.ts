@@ -3,6 +3,10 @@
 // then stores the result in dispute_analyses (RLS-scoped to the calling user).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import {
+  detectOtaFromStory,
+  fetchOtaRules,
+} from "../_shared/bright-data-service.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -170,7 +174,20 @@ Deno.serve(async (req) => {
       currency: dispute.currency,
     };
 
-    const userPrompt = buildUserPrompt(payload, language);
+    // Ground Truth: fetch latest OTA refund policy if we can detect one.
+    let groundTruth = "";
+    let groundTruthMeta: { ota?: string; source: string } = { source: "none" };
+    const detected = detectOtaFromStory(dispute.story);
+    if (detected) {
+      const res = await fetchOtaRules(detected.ota, detected.url, admin, userId);
+      groundTruth = res.content;
+      groundTruthMeta = { ota: detected.ota, source: res.source };
+    }
+
+    const userPrompt = buildUserPrompt(payload, language, {
+      ota: groundTruthMeta.ota,
+      content: groundTruth,
+    });
     const systemPrompt = buildSystemPrompt(language);
     const model = "google/gemini-3-flash-preview";
 
@@ -328,7 +345,12 @@ Deno.serve(async (req) => {
       action: "analysis.run",
       resource_type: "dispute_analyses",
       resource_id: analysis.id,
-      metadata: { dispute_id: dispute.id, model, risk: parsed.risk_level },
+      metadata: {
+        dispute_id: dispute.id,
+        model,
+        risk: parsed.risk_level,
+        ground_truth: groundTruthMeta,
+      },
     });
 
     return json({ analysis_id: analysis.id });
@@ -339,7 +361,11 @@ Deno.serve(async (req) => {
   }
 });
 
-function buildUserPrompt(p: AnalyzePayload, language: "en" | "zh") {
+function buildUserPrompt(
+  p: AnalyzePayload,
+  language: "en" | "zh",
+  groundTruth?: { ota?: string; content: string },
+) {
   const categoryLabel = {
     hotel: "Hotel issue (deposits, wrong booking, unjustified charges)",
     flight: "Flight disruption (delays, cancellation, missed connection)",
@@ -350,6 +376,11 @@ function buildUserPrompt(p: AnalyzePayload, language: "en" | "zh") {
     language === "zh"
       ? `CRITICAL: recommendation and leverage_points MUST be in Simplified Chinese. The draft_email MUST be BILINGUAL — write each line / short paragraph in English first, then place the Chinese translation in square brackets on the very next line (Subject line included). Cite statutes as "中文翻译 (English original name)".`
       : `CRITICAL: All output MUST be in English.`;
+
+  const groundTruthBlock =
+    groundTruth && groundTruth.content && groundTruth.ota
+      ? `\n### REFERENCE — Latest published refund policy of ${groundTruth.ota} (retrieved ${new Date().toISOString().slice(0, 10)}):\n"""\n${groundTruth.content}\n"""\nUse this as ground truth when discussing this platform's policy. Cite specific clauses where applicable. Do NOT invent clauses not present in this text. If the platform's own policy contradicts consumer-protection statute, call out the override explicitly.\n`
+      : "";
 
   return `Produce a structured analysis for the following traveler dispute.
 
@@ -362,7 +393,7 @@ Traveler's account:
 """
 ${p.story}
 """
-
+${groundTruthBlock}
 ${langReminder}
 
 Remember: explicitly name any deceptive platform tactics in leverage_points, and ground your reasoning in the consumer-protection framework of ${p.country}. Respond by invoking produce_analysis.`;
