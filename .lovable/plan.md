@@ -1,169 +1,75 @@
-## Goal
-Before running the multi-agent legal analysis, fetch the latest refund policy of the relevant OTA (Agoda / Booking.com / Trip.com / 飞猪 / 携程 / 去哪儿 …) via Bright Data Web Unlocker, cache it for 7 days, and feed it to Gemini as Ground Truth context. If retrieval fails, degrade gracefully to the cached copy (even if stale), and never break analysis.
+## 测试目标
+验证当前 Bright Data 集成在真实场景下确实能够：
+1. 检测到 story 里的 "trip" 关键词
+2. 真正向 Bright Data Web Unlocker 发起 HTTPS 请求（非 mock）
+3. 抓回 Trip.com 退款政策原文并落库到 `ota_rules_cache`
+4. 写入 4 类 `audit_logs` 事件（triggered / succeeded / cache_hit / failed）
+5. Gemini 在分析里真的引用了抓取到的条款（而非凭空编造）
+
+## 你需要先确认的两点（不确定就停）
+
+**Q1 — 测试身份**：要不要我创建一个临时测试用户（email + password），在脚本里登录后再调用 Edge Function？还是你愿意现在用浏览器登录后我借用 preview session 的 JWT？
+> 推荐**借用 preview session**：更真实，不会污染用户表。
+
+**Q2 — 抓取范围预期管理（重要）**：当前 allowlist 里 `trip` 只指向一个 URL：
+`https://www.trip.com/customerservice/refund-policy`
+它**不会**专门去找"性别填错"专项规则，也**不覆盖**新加坡 CPFTA / Small Claims Tribunal。
+- 选项 X：**只测现状**——验证 Bright Data 链路通 + Trip 通用退款条款被注入 prompt + Gemini 用新加坡法律的内置知识作答。最快，能证明集成可用，但你那句"新加坡法律以可验证方式来自外部源"做不到。
+- 选项 Y：**先小幅扩展 allowlist**——加 `case.org.sg`（新加坡消协官方）和 `cccs.gov.sg`（公平交易委员会），这两个域是公开静态页，加完一起测，"逻辑严谨可验证"才真正成立。需要 ~10 行代码改动 + 1 次 redeploy。
+
+> 推荐 **Y**，否则法律部分仍然只是 LLM 自说自话，不符合你"可验证"的要求。
 
 ---
 
-## 1. Database (one migration)
+## 测试流程（基于你对 Q1/Q2 的回答）
 
-**New table `public.ota_rules_cache`**
-- `id uuid pk`
-- `ota_name text not null` (canonical slug: `agoda`, `booking`, `trip`, `fliggy`, `ctrip`, `qunar`, …)
-- `source_url text not null`
-- `raw_content text not null` (truncated to ~40 KB before storage)
-- `content_hash text not null` (sha256 of raw_content; used to detect real changes)
-- `fetched_at timestamptz default now()`
-- `updated_at timestamptz default now()` (only bumped when hash changes)
-- Unique index `(ota_name, source_url)`
-- Index `(ota_name, fetched_at desc)`
-
-**RLS**: enable, no policies for `anon`/`authenticated` (server-only read via `supabaseAdmin` / service role in the edge function). GRANT `ALL` to `service_role` only.
-
-**Audit**: extend `AuditAction` union in `src/lib/audit.server.ts` with:
-- `bright_data.fetch_triggered`
-- `bright_data.fetch_succeeded`
-- `bright_data.fetch_failed`
-- `bright_data.cache_hit`
-
-(Edge function writes directly to `audit_logs` with `admin` client — matches the existing pattern.)
-
----
-
-## 2. Secrets
-
-Request via `add_secret`:
-- `BRIGHT_DATA_API_KEY`
-- `BRIGHT_DATA_ZONE_ID`
-
-Read **only** via `Deno.env.get(...)` inside the edge function. Never hardcoded, never exposed to the client.
-
----
-
-## 3. Backend — `supabase/functions/_shared/bright-data-service.ts`
-
-A self-contained server helper (placed in `_shared/` so the edge function imports it).
-
-**Exports**
-
-```ts
-detectOtaFromStory(story: string): { ota: OtaSlug; url: string } | null
-fetchOtaRules(ota: OtaSlug, url: string, admin: SupabaseClient): Promise<{
-  content: string;
-  source: "live" | "cache" | "stale_cache" | "none";
-}>
+### 步骤 1 — 清空既有缓存，确保走真实回源
+```sql
+DELETE FROM ota_rules_cache WHERE ota_name = 'trip';
+DELETE FROM audit_logs WHERE action LIKE 'bright_data.%' AND created_at > now() - interval '1 hour';
 ```
+（仅清近 1h 日志，保留历史。）
 
-**OTA allowlist (single source of truth, prevents SSRF)**
+### 步骤 2 — 构造一条真实 dispute 并触发分析
+通过 `supabase--curl_edge_functions` 调 `analyze-dispute`，body 包含你给出的完整 story（含 "Trip"、"新加坡"、"性别填错"、"酒店拒绝入住"）。
+- 先 `INSERT` 一条 `disputes` 行（user_id = 当前登录用户，category='hotel', country='Singapore'）
+- 拿到 dispute_id → POST 给 Edge Function
+- 记录返回的 analysis_id
 
-A hardcoded map. Only entries in this map are ever fetched. User input never controls the URL.
+### 步骤 3 — 验证 Bright Data 真的被调用（不是 mock）
+并行查 3 张表，**全部要满足**才算通过：
 
-```
-agoda    → https://www.agoda.com/info/cancellation-policy.html
-booking  → https://www.booking.com/content/cancellation.html
-trip     → https://www.trip.com/customerservice/refund-policy
-fliggy   → https://help.fliggy.com/hc/category/...
-ctrip    → https://vacations.ctrip.com/...
-qunar    → https://help.qunar.com/...
-klook    → https://www.klook.com/.../refund-policy/
-```
+| 验证点 | SQL / 检查 | 通过标准 |
+|---|---|---|
+| 触发事件已写入 | `SELECT action, metadata FROM audit_logs WHERE resource_type='ota_rules_cache' ORDER BY created_at DESC LIMIT 10` | 必须出现 `bright_data.fetch_triggered` + 之后 `fetch_succeeded`（或 `fetch_failed` + `stale_cache`） |
+| 缓存表有新行 | `SELECT ota_name, length(raw_content), content_hash, fetched_at FROM ota_rules_cache WHERE ota_name='trip'` | `length > 500` 且 `fetched_at` 是刚才；`content_hash` 是 64 位 sha256 |
+| 抓回的内容真是 Trip.com 退款页 | `SELECT substring(raw_content, 1, 800) FROM ota_rules_cache WHERE ota_name='trip'` | 文本里出现 "refund" / "cancellation" / "Trip.com" 关键词 |
 
-**Detection** is plain keyword matching against `story` (case-insensitive, supports both English and Chinese aliases: `携程/Ctrip`, `飞猪/Fliggy`, etc.). First match wins.
+### 步骤 4 — 验证 Gemini 真的"用"了抓回的条款
+- 查 `dispute_analyses` 对应行的 `recommendation` 和 `leverage_points`
+- 标准：`leverage_points` 中至少 1 条 `source` 指向 Trip.com 政策原文措辞（不是泛泛"根据平台条款"）
+- 如果选了 Y：还要看见至少 1 条引用 `case.org.sg` 或 `cccs.gov.sg`
 
-**Fetch flow**
+### 步骤 5 — 验证缓存命中分支
+立即再调一次同样的 dispute（或新 dispute 但同 story）。预期：
+- `audit_logs` 新增 `bright_data.cache_hit`，**不再**出现 `fetch_triggered`
+- 响应明显更快（>2s 差异）
 
-```text
-1. SELECT from ota_rules_cache WHERE ota_name=? ORDER BY fetched_at DESC LIMIT 1
-2. If row exists AND fetched_at > now() - 7 days:
-     → audit: bright_data.cache_hit; return { content, source: "cache" }
-3. audit: bright_data.fetch_triggered
-4. POST https://api.brightdata.com/request
-     Authorization: Bearer ${BRIGHT_DATA_API_KEY}
-     body: { zone: ZONE_ID, url, format: "raw" }
-     AbortController, timeout 12s
-5. On 200:
-     - strip HTML → plain text, truncate to 40 KB
-     - hash = sha256(text)
-     - if row exists and hash === row.hash → just bump fetched_at
-     - else upsert new row
-     - audit: bright_data.fetch_succeeded
-     - return { content, source: "live" }
-6. On non-2xx / timeout / 429 / network error:
-     - console.error full detail server-side ONLY
-     - audit: bright_data.fetch_failed with { status, ota }
-     - if any cached row exists (even >7d): return { content, source: "stale_cache" }
-     - else: return { content: "", source: "none" }
-```
-
-**SSRF guards inside `fetchOtaRules`**
-- `ota` must be a key of the allowlist; otherwise return `{ source: "none" }`.
-- The `url` argument is ignored in favor of `ALLOWLIST[ota]` — caller cannot inject arbitrary URLs.
-- Final URL is parsed; only `https:` + host in the allowlist's hostname set is permitted.
+### 步骤 6 — 验证降级路径（可选但推荐）
+临时把 `BRIGHT_DATA_API_KEY` 改成无效值 → 再调一次 → 应看到 `fetch_failed` + 返回的 prompt 仍然包含上一次缓存内容（`source: stale_cache`），分析不中断。完事后还原 key。
+> 这一步需要你授权改 secret，**默认跳过**，除非你说要测。
 
 ---
 
-## 4. Extend `supabase/functions/analyze-dispute/index.ts`
-
-Insertion point: **after** loading the dispute and setting status `analyzing`, **before** building the AI prompt.
-
-```ts
-const detected = detectOtaFromStory(dispute.story);
-let groundTruth = "";
-let groundTruthMeta: { ota?: string; source: string } = { source: "none" };
-
-if (detected) {
-  const res = await fetchOtaRules(detected.ota, detected.url, admin);
-  groundTruth = res.content;
-  groundTruthMeta = { ota: detected.ota, source: res.source };
-}
-```
-
-- Pass `groundTruth` + `groundTruthMeta.ota` into `buildUserPrompt` as a new section:
-  > `### REFERENCE — Latest published refund policy of {ota} (retrieved {today}): """ ... """ Use this as ground truth; cite it where applicable. Do NOT invent clauses not present in this text.`
-- Persist `groundTruthMeta` into `dispute_analyses.metadata` (or extend the `audit_logs.metadata` for `analysis.run`) so we can trace which OTA source informed each analysis.
-- Rate-limiting, RLS, auth flow are unchanged.
+## 你会拿到的最终交付物
+1. 一份"逐步骤通过/失败"清单（含每步的 SQL 真实返回片段）
+2. 抓回的 Trip.com 退款条款原文摘录（前 ~1KB 给你肉眼核对）
+3. Gemini 最终分析里**实际引用的条款句**，与抓回原文一一对应（这就是"可验证"）
+4. 如选 Y：新加坡 CPFTA / CASE 相关条文摘录 + 在分析里的引用位置
 
 ---
 
-## 5. Frontend — shimmer state
-
-`src/routes/claim.$category.tsx`
-
-The current submit flow already calls `supabase.functions.invoke("analyze-dispute", …)` once and navigates on completion. The Bright Data fetch happens inside that call, so the existing single-call UX is unchanged — what we add is richer waiting UI:
-
-- During `submitting`, replace the small spinner row inside step 3's submit button area with a full-card **Shimmer panel** (animated skeleton bars using existing Tailwind `animate-pulse` + a subtle gradient). The panel cycles through 3 i18n status lines on a 2.5s interval:
-  1. `wizard.analyzeStep1` — “正在保存案件资料…” / “Saving your case…”
-  2. `wizard.analyzeStep2` — “正在实时检索该 OTA 平台的最新退款政策以确保分析准确性…” / “Fetching the latest refund policy from the relevant OTA platform for accurate analysis…”
-  3. `wizard.analyzeStep3` — “多智能体正在合成法律分析…” / “Multi-agent legal synthesis in progress…”
-- Add the three keys to `src/lib/i18n.ts` (en + zh).
-- No new server round-trip is needed for the rotation; it's purely a UI affordance.
-
----
-
-## 6. Security checklist (enforced)
-
-| Risk | Mitigation |
-|------|-----------|
-| SSRF via user-controlled URL | Hardcoded allowlist; user input never reaches Bright Data |
-| Secret leak | `Deno.env.get` only; never logged; never returned to client |
-| Bright Data error message leak | Generic 502/503 path is irrelevant because we fall back to cache; only `console.error` carries detail |
-| Cache poisoning | Only the edge function (service role) writes; RLS denies all other roles |
-| Token in audit metadata | Audit `metadata` stores only `{ ota, source, status }` — never URLs with tokens or response bodies |
-
-Adheres to existing security memory rules: generic client errors, server-side logging, no internal terminology in client-visible messages.
-
----
-
-## 7. Order of execution (once approved)
-
-1. `add_secret` for `BRIGHT_DATA_API_KEY` + `BRIGHT_DATA_ZONE_ID` — wait for user to populate.
-2. Migration: create `ota_rules_cache` with GRANTs + RLS.
-3. Add `supabase/functions/_shared/bright-data-service.ts`.
-4. Patch `supabase/functions/analyze-dispute/index.ts` (detect → fetch → inject into prompt → persist metadata).
-5. Extend `AuditAction` union in `src/lib/audit.server.ts`.
-6. Add i18n keys + shimmer panel in `src/routes/claim.$category.tsx`.
-7. Deploy `analyze-dispute`; smoke-test with `curl_edge_functions`.
-8. Update `@security-memory` with the new Bright Data rules (allowlist-only, server-only secrets, fallback to stale cache).
-
----
-
-## Open questions (none blocking)
-The four design choices you confirmed (Web Unlocker, extend existing function, keyword match, 7-day TTL) cover all ambiguity. If during implementation the Bright Data Web Unlocker response format differs from `{ body: html }`, I’ll adapt parsing without changing the contract above.
+## 我现在停下，等你回答：
+- **Q1**：preview session JWT（推荐） / 新建测试账号 / 其他？
+- **Q2**：选项 X（只测现状） / 选项 Y（先加 SG 法律源再测，推荐）？
+- 步骤 6 降级测试：跳过 / 执行？
