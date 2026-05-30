@@ -648,6 +648,8 @@ function WizardPage() {
             )}
           </div>
 
+          {submitting && <AnalyzingShimmer />}
+
           {!user && (
             <p className="mt-4 text-center text-xs text-muted-foreground">
               {t("wizard.signinPrompt")}
