@@ -183,6 +183,36 @@ export type Database = {
         }
         Relationships: []
       }
+      ota_rules_cache: {
+        Row: {
+          content_hash: string
+          fetched_at: string
+          id: string
+          ota_name: string
+          raw_content: string
+          source_url: string
+          updated_at: string
+        }
+        Insert: {
+          content_hash: string
+          fetched_at?: string
+          id?: string
+          ota_name: string
+          raw_content: string
+          source_url: string
+          updated_at?: string
+        }
+        Update: {
+          content_hash?: string
+          fetched_at?: string
+          id?: string
+          ota_name?: string
+          raw_content?: string
+          source_url?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           country: string | null
