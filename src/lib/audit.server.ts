@@ -13,7 +13,11 @@ export type AuditAction =
   | "evidence.rejected"
   | "tts.call"
   | "stt.call"
-  | "rate_limit.exceeded";
+  | "rate_limit.exceeded"
+  | "bright_data.fetch_triggered"
+  | "bright_data.fetch_succeeded"
+  | "bright_data.fetch_failed"
+  | "bright_data.cache_hit";
 
 export type AuditInput = {
   userId?: string | null;
