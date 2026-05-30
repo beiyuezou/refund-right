@@ -118,6 +118,10 @@ const en = {
     errUpload: "Could not upload {{name}}.",
     errDelete: "Could not remove {{name}}.",
     signInToUpload: "Sign in to upload evidence. You can still continue without files.",
+    analyzeStep1: "Saving your case details…",
+    analyzeStep2: "Fetching the latest refund policy from the relevant OTA platform for accurate analysis…",
+    analyzeStep3: "Multi-agent legal synthesis in progress…",
+    analyzeTitle: "Analyzing your dispute",
   },
   auth: {
     signupTitle: "Create your account",
