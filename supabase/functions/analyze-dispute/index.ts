@@ -5,6 +5,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import {
   detectOtaFromStory,
+  detectLegalSources,
   fetchOtaRules,
 } from "../_shared/bright-data-service.ts";
 
@@ -184,10 +185,29 @@ Deno.serve(async (req) => {
       groundTruthMeta = { ota: detected.ota, source: res.source };
     }
 
+    // Ground Truth (legal): fetch jurisdictional consumer-protection sources in
+    // parallel so the legal reasoning is verifiable against external text.
+    const legalDetected = detectLegalSources(dispute.country);
+    const legalResults: { slug: string; source: string; content: string }[] = [];
+    if (legalDetected.length > 0) {
+      const settled = await Promise.all(
+        legalDetected.map((l) =>
+          fetchOtaRules(l.slug, l.url, admin, userId).then((r) => ({
+            slug: l.slug,
+            source: r.source,
+            content: r.content,
+          })),
+        ),
+      );
+      for (const r of settled) {
+        if (r.content) legalResults.push(r);
+      }
+    }
+
     const userPrompt = buildUserPrompt(payload, language, {
       ota: groundTruthMeta.ota,
       content: groundTruth,
-    });
+    }, legalResults);
     const systemPrompt = buildSystemPrompt(language);
     const model = "google/gemini-3-flash-preview";
 
@@ -350,6 +370,7 @@ Deno.serve(async (req) => {
         model,
         risk: parsed.risk_level,
         ground_truth: groundTruthMeta,
+        legal_sources: legalResults.map((l) => ({ slug: l.slug, source: l.source, bytes: l.content.length })),
       },
     });
 
@@ -365,6 +386,7 @@ function buildUserPrompt(
   p: AnalyzePayload,
   language: "en" | "zh",
   groundTruth?: { ota?: string; content: string },
+  legalSources?: { slug: string; source: string; content: string }[],
 ) {
   const categoryLabel = {
     hotel: "Hotel issue (deposits, wrong booking, unjustified charges)",
@@ -382,6 +404,18 @@ function buildUserPrompt(
       ? `\n### REFERENCE — Latest published refund policy of ${groundTruth.ota} (retrieved ${new Date().toISOString().slice(0, 10)}):\n"""\n${groundTruth.content}\n"""\nUse this as ground truth when discussing this platform's policy. Cite specific clauses where applicable. Do NOT invent clauses not present in this text. If the platform's own policy contradicts consumer-protection statute, call out the override explicitly.\n`
       : "";
 
+  const legalBlock =
+    legalSources && legalSources.length > 0
+      ? "\n### REFERENCE — Jurisdictional consumer-protection sources (retrieved live):\n" +
+        legalSources
+          .map(
+            (l) =>
+              `--- Source: ${l.slug} (${l.source}) ---\n"""\n${l.content}\n"""`,
+          )
+          .join("\n") +
+        "\nCite these sources by name (e.g. CASE, CCCS) when grounding statutory claims. Do NOT invent provisions absent from this text. Prefer quoting short phrases from the source over paraphrasing.\n"
+      : "";
+
   return `Produce a structured analysis for the following traveler dispute.
 
 Category: ${categoryLabel}
@@ -394,6 +428,7 @@ Traveler's account:
 ${p.story}
 """
 ${groundTruthBlock}
+${legalBlock}
 ${langReminder}
 
 Remember: explicitly name any deceptive platform tactics in leverage_points, and ground your reasoning in the consumer-protection framework of ${p.country}. Respond by invoking produce_analysis.`;
