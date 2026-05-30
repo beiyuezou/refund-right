@@ -213,6 +213,15 @@ export async function fetchOtaRules(
   }
 
   await audit(admin, userId, "bright_data.fetch_triggered", { ota });
+  // Diagnostic: surface zone name + token fingerprint (NOT the token itself)
+  // so we can confirm the secret is what we think it is.
+  await audit(admin, userId, "bright_data.debug", {
+    ota,
+    zone_value: zone,
+    zone_length: zone.length,
+    api_key_prefix: apiKey.slice(0, 6),
+    api_key_length: apiKey.length,
+  });
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
