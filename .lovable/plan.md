@@ -1,49 +1,56 @@
-# 方案 B：改用 Datacenter Proxy（`datacenter_proxy1`）抓取
+# 方案 B：Bright Data `/request` API + `datacenter_proxy1` zone
 
-放弃 Web Unlocker `/request` JSON API，改走 Bright Data 标准 HTTP 代理通道，复用你已有的 `datacenter_proxy1` zone。
+## 目标
+RefundRight 在 AI 分析时实时抓取 OTA 退款政策、SG 法律源，作为 Ground Truth 注入 Gemini，不硬编码、不暴露密钥。
 
-## 需要你先准备的两个值
+## 关键洞察
+Bright Data `POST https://api.brightdata.com/request` 是**账号级 API**，对所有 zone 类型（Web Unlocker / Datacenter / Residential）通用，只需传 `zone` 名字。现有 `supabase/functions/_shared/bright-data-service.ts` 代码**完全不用改**，只需把 secret `BRIGHT_DATA_ZONE_ID` 设成 `datacenter_proxy1`。
 
-调用 `add_secret` 收集（不会出现在日志/代码里）：
+凭证用账号级 **API token**，不是 zone 代理密码 — 满足"不能硬编码、注重安全"的要求。
 
-1. **`BRIGHT_DATA_CUSTOMER_ID`** — Bright Data 控制台左上角，形如 `hl_xxxxxxxx`（不是 API Key）。
-2. **`BRIGHT_DATA_ZONE_PASSWORD`** — `datacenter_proxy1` zone 详情页 → Access parameters → Password（**zone 专属密码**，不是账号密码、也不是 API Key）。
+## 需要你确认/提供的 Secret
 
-`BRIGHT_DATA_ZONE_ID=datacenter_proxy1` 保持不变；`BRIGHT_DATA_API_KEY` 暂时保留（本方案不用，但留着不影响）。
+| Secret | 值 | 来源 |
+|---|---|---|
+| `BRIGHT_DATA_API_KEY` | 账号级 API token | Bright Data 控制台 → Account settings → API tokens |
+| `BRIGHT_DATA_ZONE_ID` | `datacenter_proxy1` | 已知 |
+| `BRIGHT_DATA_CUSTOMER_ID` | `hl_340d21df` | 已知（仅留作审计，运行时不用） |
 
-## 代码改动（仅 `supabase/functions/_shared/bright-data-service.ts`）
+如果不确定当前 `BRIGHT_DATA_API_KEY` 是不是账号 token（可能误填成了 zone password），我会发起 `update_secret` 让你重新粘贴。
 
-替换 `fetchOtaRules` 内的「2. Cache miss → 调用 Bright Data」段，约 40 行：
+## 改动范围
 
-- 读取 `BRIGHT_DATA_CUSTOMER_ID` / `BRIGHT_DATA_ZONE_ID` / `BRIGHT_DATA_ZONE_PASSWORD`；任一缺失 → 走原有 `stale_cache` / `none` 降级。
-- 用 Deno 标准库 `npm:https-proxy-agent` 风格不可用 → 改用 Deno 原生 `Deno.createHttpClient({ proxy: { url, basicAuth } })` + `fetch(url, { client })`：
-  - `url`: `http://brd.superproxy.io:22225`
-  - `basicAuth.username`: `brd-customer-${customerId}-zone-${zone}`（可追加 `-country-sg` 提升 SG 站点成功率，先不加，保持最小改动）
-  - `basicAuth.password`: zone password
-- 保留现有 `AbortController` 12s 超时、`MAX_CONTENT_BYTES` 截断、`stripHtml`、SHA-256 去重、`ota_rules_cache` upsert、`audit_logs` 全部埋点（`bright_data.fetch_triggered/succeeded/failed`）。
-- 失败分支文案标注 `transport: "datacenter_proxy"`，方便日后区分。
-- 其他文件（`analyze-dispute/index.ts`、allowlist、`detectLegalSources`、SG 法律源）零改动。
+| 文件 | 改动 |
+|---|---|
+| Secret `BRIGHT_DATA_ZONE_ID` | 设为 `datacenter_proxy1` |
+| Secret `BRIGHT_DATA_API_KEY` | 必要时重填账号 token |
+| `bright-data-service.ts` | **零改动** |
+| `analyze-dispute/index.ts` | **零改动** |
+| DB / RLS / Auth / UI / i18n / Gemini prompt | **零改动** |
 
-## 风险与降级承诺
-
-- Datacenter Proxy 在 Trip.com / case.org.sg / cccs.gov.sg 这类有 anti-bot 的站点上**预期会出现 403 / captcha / 空白 HTML**。
-- 失败时严格走原有降级链：`stale_cache` → `none`，绝不抛错断主链；AI 分析仍能凭 dispute story + 本地知识完成输出，只是 ground-truth context 为空。
-- 我会在测试报告里**逐 OTA / 逐法律源**标明：`live` / `cache` / `stale_cache` / `none`，并给出 HTTP 状态码或被识别为 bot 的迹象，让你清楚看到 Datacenter 路线的真实命中率。
+## 安全
+- 三个 secret 全部走 Lovable Cloud secrets，`Deno.env.get()` 读取，永不进代码/日志/前端
+- SSRF allowlist 已存在（7 OTA + 2 SG 法律源），调用方传入的 URL 被忽略，只用 allowlist URL
+- `audit_logs` 完整埋点：`bright_data.fetch_triggered/succeeded/failed/cache_hit`
+- 失败 3 级降级：`live → cache → stale_cache → none`，**绝不中断主流程**；失败时 AI 仍能基于 dispute 描述 + `src/lib/knowledge.ts` 本地法律基线给出回答
 
 ## 部署 + 验证流程
 
-1. 你点击「Add secret」填入 `BRIGHT_DATA_CUSTOMER_ID` + `BRIGHT_DATA_ZONE_PASSWORD`。
-2. 我改 `bright-data-service.ts` → `deploy_edge_functions(["analyze-dispute"])`。
-3. 清空 `ota_rules_cache` 中 trip / sg_case / sg_cccs 三行（强制 live 抓取）。
-4. 用 preview session JWT 跑【Trip.com 性别填错 + 新加坡酒店拒退】案例。
-5. 交付：`audit_logs` 中 5 条 `bright_data.*` 事件 + 每条 source 的命中状态 + 最终 AI 输出截取。
+1. 你点 Approve
+2. 我调 `update_secret(["BRIGHT_DATA_ZONE_ID"])`（必要时含 `BRIGHT_DATA_API_KEY`），你在弹窗里粘贴
+3. `deploy_edge_functions(["analyze-dispute"])`
+4. 清空 `ota_rules_cache` 中 trip / sg_case / sg_cccs 三行 → 强制 live
+5. 用 preview session JWT 跑【Trip.com 性别填错】+【SG 酒店拒退】两个真实 case
+6. 交付报告，逐源标注：HTTP 状态 / `live|cache|stale_cache|none` / 命中字节数 / AI 最终输出片段
 
-## 如果 Datacenter 全线 403
+## Datacenter 路线的真实风险
 
-我会**当场停下叫你**，给出两条出路：
-- 回到方案 A 新建 Web Unlocker zone；
-- 或加 `-country-sg` 国家定向 + 重试一次。
+Datacenter IP 在反爬严格的站点（Trip.com / case.org.sg / cccs.gov.sg）大概率 **403 / captcha / 空白 HTML**。Agoda / Booking / Klook 通常能过。
 
-不会自作主张切换或继续烧 quota。
+**如果 Trip.com 或 SG 法律源全线 403**，我**立刻停下汇报**，给你两条路：
+- **B+**：去 Bright Data 控制台开一个 Web Unlocker zone（免费试用，5 分钟），把 `BRIGHT_DATA_ZONE_ID` 改成新 zone 名 → 重跑（命中率 95%+）
+- **回滚**：保留 stale cache，不做外部抓取
 
-确认计划无误就点 Approve，我立即进入收集 secret → 改代码 → 部署 → 测试。
+**绝不**自作主张烧 quota 或切方案。
+
+确认就点 Approve，我立即进入 secret 收集 → 部署 → 测试。
