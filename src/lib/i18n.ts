@@ -364,6 +364,10 @@ const zh: typeof en = {
     errUpload: "无法上传 {{name}}。",
     errDelete: "无法移除 {{name}}。",
     signInToUpload: "请登录以上传证据。也可不上传文件继续。",
+    analyzeStep1: "正在保存案件资料…",
+    analyzeStep2: "正在实时检索该 OTA 平台的最新退款政策以确保分析准确性…",
+    analyzeStep3: "多智能体正在合成专业法律分析…",
+    analyzeTitle: "正在分析您的申诉",
   },
   auth: {
     signupTitle: "创建账户",
