@@ -18,6 +18,7 @@ import { Route as ClaimCategoryRouteImport } from './routes/claim.$category'
 import { Route as ApiTtsRouteImport } from './routes/api/tts'
 import { Route as ApiTranscribeAudioRouteImport } from './routes/api/transcribe-audio'
 import { Route as AnalysisDisputeIdRouteImport } from './routes/analysis.$disputeId'
+import { Route as ApiPublicScrapeBrowserRouteImport } from './routes/api/public/scrape-browser'
 
 const KnowledgeRoute = KnowledgeRouteImport.update({
   id: '/knowledge',
@@ -64,6 +65,11 @@ const AnalysisDisputeIdRoute = AnalysisDisputeIdRouteImport.update({
   path: '/analysis/$disputeId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicScrapeBrowserRoute = ApiPublicScrapeBrowserRouteImport.update({
+  id: '/api/public/scrape-browser',
+  path: '/api/public/scrape-browser',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -75,6 +81,7 @@ export interface FileRoutesByFullPath {
   '/api/tts': typeof ApiTtsRoute
   '/claim/$category': typeof ClaimCategoryRoute
   '/knowledge/$slug': typeof KnowledgeSlugRoute
+  '/api/public/scrape-browser': typeof ApiPublicScrapeBrowserRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -86,6 +93,7 @@ export interface FileRoutesByTo {
   '/api/tts': typeof ApiTtsRoute
   '/claim/$category': typeof ClaimCategoryRoute
   '/knowledge/$slug': typeof KnowledgeSlugRoute
+  '/api/public/scrape-browser': typeof ApiPublicScrapeBrowserRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -98,6 +106,7 @@ export interface FileRoutesById {
   '/api/tts': typeof ApiTtsRoute
   '/claim/$category': typeof ClaimCategoryRoute
   '/knowledge/$slug': typeof KnowledgeSlugRoute
+  '/api/public/scrape-browser': typeof ApiPublicScrapeBrowserRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -111,6 +120,7 @@ export interface FileRouteTypes {
     | '/api/tts'
     | '/claim/$category'
     | '/knowledge/$slug'
+    | '/api/public/scrape-browser'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -122,6 +132,7 @@ export interface FileRouteTypes {
     | '/api/tts'
     | '/claim/$category'
     | '/knowledge/$slug'
+    | '/api/public/scrape-browser'
   id:
     | '__root__'
     | '/'
@@ -133,6 +144,7 @@ export interface FileRouteTypes {
     | '/api/tts'
     | '/claim/$category'
     | '/knowledge/$slug'
+    | '/api/public/scrape-browser'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -144,6 +156,7 @@ export interface RootRouteChildren {
   ApiTranscribeAudioRoute: typeof ApiTranscribeAudioRoute
   ApiTtsRoute: typeof ApiTtsRoute
   ClaimCategoryRoute: typeof ClaimCategoryRoute
+  ApiPublicScrapeBrowserRoute: typeof ApiPublicScrapeBrowserRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -211,6 +224,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnalysisDisputeIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/scrape-browser': {
+      id: '/api/public/scrape-browser'
+      path: '/api/public/scrape-browser'
+      fullPath: '/api/public/scrape-browser'
+      preLoaderRoute: typeof ApiPublicScrapeBrowserRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -235,7 +255,17 @@ const rootRouteChildren: RootRouteChildren = {
   ApiTranscribeAudioRoute: ApiTranscribeAudioRoute,
   ApiTtsRoute: ApiTtsRoute,
   ClaimCategoryRoute: ClaimCategoryRoute,
+  ApiPublicScrapeBrowserRoute: ApiPublicScrapeBrowserRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { createStart } from '@tanstack/react-start'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+  }
+}
