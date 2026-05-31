@@ -66,7 +66,7 @@ function DashboardPage() {
         )
         .order("created_at", { ascending: false });
       if (error) {
-        console.error(error);
+        if (import.meta.env.DEV) console.error(error);
         setRows([]);
         return;
       }
