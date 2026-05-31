@@ -296,7 +296,7 @@ function WizardPage() {
         .single();
 
       if (dErr || !dispute) {
-        console.error(dErr);
+        if (import.meta.env.DEV) console.error(dErr);
         toast.error(t("wizard.errSave"));
         return;
       }
