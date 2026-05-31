@@ -73,7 +73,12 @@ const ALLOWED_HOSTS = new Set(
 const CACHE_TTL_MS = 7 * 24 * 3600 * 1000; // 7 days
 const FETCH_TIMEOUT_MS = 45_000;
 const MAX_CONTENT_BYTES = 40_000;
-const BROWSER_TIMEOUT_MS = 60_000;
+const BROWSER_TIMEOUT_MS = 55_000;
+
+// Cloudflare Worker route that runs the actual CDP-over-WebSocket call.
+// Stable URL: doesn't change if project is renamed.
+const SCRAPE_PROXY_URL =
+  "https://project--0412ac6b-e839-45ea-9be0-9b1c096baf21.lovable.app/api/public/scrape-browser";
 
 // Sources that are JS-rendered SPAs and need a real headless browser
 // (Bright Data Scraping Browser via CDP) instead of Web Unlocker.
@@ -333,11 +338,9 @@ async function fetchViaScrapingBrowser(
   userId: string | null,
   cached: CachedRow,
 ): Promise<FetchResult> {
-  const customer = Deno.env.get("BRIGHT_DATA_CUSTOMER_ID");
-  const browserZone = Deno.env.get("BRIGHT_DATA_BROWSER_ZONE");
   const browserPwd = Deno.env.get("BRIGHT_DATA_BROWSER_PASSWORD");
 
-  if (!customer || !browserZone || !browserPwd) {
+  if (!browserPwd) {
     console.error("[bright-data] scraping browser not configured");
     await audit(admin, userId, "bright_data.fetch_failed", {
       ota,
@@ -349,118 +352,50 @@ async function fetchViaScrapingBrowser(
     return { content: "", source: "none" };
   }
 
-  const wsUrl =
-    `wss://brd-customer-${customer}-zone-${browserZone}:${browserPwd}` +
-    `@brd.superproxy.io:9222`;
-
-  let ws: WebSocket | null = null;
-  let timer: number | undefined;
+  const controller = new AbortController();
+  const timer = setTimeout(
+    () => controller.abort(),
+    BROWSER_TIMEOUT_MS,
+  );
 
   try {
-    const html = await new Promise<string>((resolve, reject) => {
-      timer = setTimeout(
-        () => reject(new Error("browser_timeout")),
-        BROWSER_TIMEOUT_MS,
-      ) as unknown as number;
-
-      ws = new WebSocket(wsUrl);
-      let nextId = 0;
-      const pending = new Map<
-        number,
-        { resolve: (v: unknown) => void; reject: (e: Error) => void }
-      >();
-      let sessionId: string | null = null;
-      let loaded = false;
-
-      const send = (
-        method: string,
-        params: Record<string, unknown> = {},
-        withSession = false,
-      ) => {
-        const id = ++nextId;
-        const msg: Record<string, unknown> = { id, method, params };
-        if (withSession && sessionId) msg.sessionId = sessionId;
-        return new Promise<unknown>((res, rej) => {
-          pending.set(id, { resolve: res, reject: rej });
-          ws!.send(JSON.stringify(msg));
-        });
-      };
-
-      ws.onerror = (ev) => reject(new Error(`ws_error: ${String((ev as ErrorEvent).message ?? "unknown")}`));
-      ws.onclose = () => {
-        if (!loaded) reject(new Error("ws_closed_early"));
-      };
-
-      ws.onmessage = async (ev) => {
-        let data: Record<string, unknown>;
-        try {
-          data = JSON.parse(typeof ev.data === "string" ? ev.data : "");
-        } catch {
-          return;
-        }
-        if (typeof data.id === "number" && pending.has(data.id)) {
-          const { resolve: r, reject: j } = pending.get(data.id)!;
-          pending.delete(data.id);
-          if (data.error) j(new Error(JSON.stringify(data.error)));
-          else r(data.result);
-          return;
-        }
-        if (data.method === "Page.loadEventFired") {
-          loaded = true;
-        }
-      };
-
-      ws.onopen = async () => {
-        try {
-          // 1. Create page target
-          const created = (await send("Target.createTarget", {
-            url: "about:blank",
-          })) as { targetId: string };
-
-          // 2. Attach (flattened — session messages return via top-level ws)
-          const attached = (await send("Target.attachToTarget", {
-            targetId: created.targetId,
-            flatten: true,
-          })) as { sessionId: string };
-          sessionId = attached.sessionId;
-
-          // 3. Enable Page domain so we get loadEventFired
-          await send("Page.enable", {}, true);
-
-          // 4. Navigate
-          await send("Page.navigate", { url: target.toString() }, true);
-
-          // 5. Wait for load event (or fall through after a soft delay)
-          const start = Date.now();
-          while (!loaded && Date.now() - start < 30_000) {
-            await new Promise((r) => setTimeout(r, 200));
-          }
-          // Extra hydration time for SPA frameworks
-          await new Promise((r) => setTimeout(r, 2500));
-
-          // 6. Grab outerHTML
-          const result = (await send(
-            "Runtime.evaluate",
-            {
-              expression: "document.documentElement.outerHTML",
-              returnByValue: true,
-            },
-            true,
-          )) as { result?: { value?: string } };
-
-          const html = result?.result?.value ?? "";
-          resolve(html);
-        } catch (err) {
-          reject(err as Error);
-        }
-      };
+    const res = await fetch(SCRAPE_PROXY_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-proxy-secret": browserPwd,
+      },
+      body: JSON.stringify({ source: ota, url: target.toString() }),
+      signal: controller.signal,
     });
+
+    if (!res.ok) {
+      let errBody = "";
+      try { errBody = (await res.text()).slice(0, 300); } catch { /* ignore */ }
+      console.error(
+        `[bright-data] proxy ${res.status} for ${ota}: ${errBody}`,
+      );
+      await audit(admin, userId, "bright_data.fetch_failed", {
+        ota,
+        mode: "scraping_browser_cf",
+        status: res.status,
+        body_preview: errBody,
+      });
+      if (cached) return { content: cached.raw_content, source: "stale_cache" };
+      return { content: "", source: "none" };
+    }
+
+    const payload = (await res.json()) as {
+      html?: string;
+      raw_bytes?: number;
+    };
+    const html = payload.html ?? "";
 
     const text = stripHtml(html).slice(0, MAX_CONTENT_BYTES);
     if (!text) {
       await audit(admin, userId, "bright_data.fetch_failed", {
         ota,
-        mode: "scraping_browser",
+        mode: "scraping_browser_cf",
         reason: "empty_after_strip",
         raw_bytes: html.length,
       });
@@ -491,7 +426,7 @@ async function fetchViaScrapingBrowser(
 
     await audit(admin, userId, "bright_data.fetch_succeeded", {
       ota,
-      mode: "scraping_browser",
+      mode: "scraping_browser_cf",
       bytes: text.length,
       raw_bytes: html.length,
       changed: !cached || cached.content_hash !== hash,
@@ -502,17 +437,14 @@ async function fetchViaScrapingBrowser(
     console.error(`[bright-data] scraping browser error for ${ota}`, err);
     await audit(admin, userId, "bright_data.fetch_failed", {
       ota,
-      mode: "scraping_browser",
-      reason: (err as Error)?.message?.slice(0, 200) ?? "unknown",
+      mode: "scraping_browser_cf",
+      reason: (err as Error)?.name === "AbortError"
+        ? "timeout"
+        : (err as Error)?.message?.slice(0, 200) ?? "unknown",
     });
     if (cached) return { content: cached.raw_content, source: "stale_cache" };
     return { content: "", source: "none" };
   } finally {
-    if (timer !== undefined) clearTimeout(timer);
-    try {
-      ws?.close();
-    } catch {
-      /* ignore */
-    }
+    clearTimeout(timer);
   }
 }
