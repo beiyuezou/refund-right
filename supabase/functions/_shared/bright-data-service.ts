@@ -73,7 +73,12 @@ const ALLOWED_HOSTS = new Set(
 const CACHE_TTL_MS = 7 * 24 * 3600 * 1000; // 7 days
 const FETCH_TIMEOUT_MS = 45_000;
 const MAX_CONTENT_BYTES = 40_000;
-const BROWSER_TIMEOUT_MS = 60_000;
+const BROWSER_TIMEOUT_MS = 55_000;
+
+// Cloudflare Worker route that runs the actual CDP-over-WebSocket call.
+// Stable URL: doesn't change if project is renamed.
+const SCRAPE_PROXY_URL =
+  "https://project--0412ac6b-e839-45ea-9be0-9b1c096baf21.lovable.app/api/public/scrape-browser";
 
 // Sources that are JS-rendered SPAs and need a real headless browser
 // (Bright Data Scraping Browser via CDP) instead of Web Unlocker.
