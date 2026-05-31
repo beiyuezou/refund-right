@@ -52,12 +52,24 @@ export const validateAndRegisterEvidence = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => Input.parse(data))
   .handler(async ({ data, context }) => {
-    const { userId } = context;
+    const { userId, supabase } = context;
 
     // Path must be scoped to this user
     if (!data.storage_path.startsWith(`${userId}/`)) {
       await logEvent({ userId, action: "evidence.rejected", metadata: { reason: "path_scope" } });
       return { ok: false as const, code: "path_scope" };
+    }
+
+    // Verify dispute_id belongs to the calling user (RLS-scoped read)
+    const { data: dispRow } = await supabase
+      .from("disputes")
+      .select("id")
+      .eq("id", data.dispute_id)
+      .maybeSingle();
+    if (!dispRow) {
+      await supabaseAdmin.storage.from("evidence").remove([data.storage_path]);
+      await logEvent({ userId, action: "evidence.rejected", metadata: { reason: "dispute_not_owned", dispute_id: data.dispute_id } });
+      return { ok: false as const, code: "dispute_not_found" };
     }
 
     if (!ALLOWED_MIME.has(data.mime_type)) {
