@@ -1,57 +1,67 @@
-## 诊断结论
+# PayPal 集成方案:按案件一次性付费解锁分析
 
-你的 Bright Data 配置完全正确：
-- Type = Browser API ✓
-- Host = `brd.superproxy.io:9222` ✓
-- `BRIGHT_DATA_BROWSER_ZONE` = 纯 zone 名 ✓（代码会自己拼 `brd-customer-XXX-zone-YYY`）
-- `BRIGHT_DATA_BROWSER_PASSWORD` = zone access parameter 密码 ✓
+## 集成位置(推荐)
 
-URL 生成结果是合法的：`wss://brd-customer-hl_340d21df-zone-<zone>:<pwd>@brd.superproxy.io:9222`，这正是 Bright Data 官方 puppeteer 样例的格式。
+在 `/analysis/$disputeId` 分析结果页设置付费墙,而不是提交表单前。
 
-真正的问题是 **Deno 的内置 `WebSocket` 在 TLS 握手时声明 h2/h3 ALPN**，而 Bright Data 边缘节点只接受 HTTP/1.1 升级，于是返回 `NoApplicationProtocol` 致命 alert——在凭据被发送之前就断了。这是 Deno 运行时限制，不是 Bright Data 也不是你的配置问题。
+理由:
+- 用户填完 3 步向导 + 上传证据后,转化率最高
+- 后台已经跑完完整 AI 分析,前端"遮罩"高价值内容即可
+- 免费预览建立信任:展示"胜算强/中/弱" + 引用法条数量,隐藏正文
+- 一次性付费,无订阅管理复杂度
 
-## 方案：把这个调用搬到 Cloudflare Worker
+## 用户流程
 
-本项目同时有两套后端：
-- `supabase/functions/*`（Deno 运行时）—— 当前 `bright-data-service.ts` 在这里，所以撞到 ALPN
-- `src/routes/api/*` + `src/lib/*.functions.ts`（Cloudflare Worker 运行时，TanStack server function）
+```text
+Wizard(免费) → 提交 → AI 分析(免费,后台运行)
+        ↓
+分析页免费层:
+  ✓ 结论摘要
+  ✓ 法条名称
+  ✗ 法条正文/金额计算/申诉信正文 (blur)
+        ↓
+点击解锁 → PayPal Smart Buttons(一次性)
+        ↓
+capture 成功 + webhook 兜底 → disputes.paid=true
+        ↓
+分析页刷新 → 全部解锁
+```
 
-**Cloudflare Worker 的 `fetch()` 配合 `Upgrade: websocket` header 走的是标准 HTTP/1.1 升级**，不存在 Deno 那种 ALPN 协商问题，正好对得上 Bright Data 的要求。这是最小代价的修复路径。
+## 技术方案
 
-## 具体步骤
+### 1. 数据库
+- `disputes` 加列:`paid boolean default false`, `paid_at timestamptz`
+- 新表 `payments`(user_id, dispute_id, paypal_order_id unique, amount_cents, currency, status, raw_payload jsonb)
+- RLS + GRANT:用户只 SELECT 自己的;写入只走 service_role
 
-1. **新建 `src/lib/scraping-browser.server.ts`**
-   - 用 `fetch('https://brd.superproxy.io:9222/', { headers: { Upgrade: 'websocket', ... }, ... })` 拿到 `WebSocket` 对象（Workers 标准 API：`response.webSocket`）
-   - 用 Basic Auth header 传 `brd-customer-XXX-zone-YYY:PWD`，避免 URL embedded credentials
-   - 实现极简 CDP 客户端：`Target.createTarget` → `Target.attachToTarget` → `Page.enable` → `Page.navigate` → 监听 `Page.loadEventFired` → `Runtime.evaluate('document.documentElement.outerHTML')`
-   - 30s 超时；返回 `{ html, status, mode: 'scraping_browser_cf' }`
+### 2. 后端
+- `createOrder` server fn(`requireSupabaseAuth`):校验 dispute 归属 → 调 PayPal `POST /v2/checkout/orders` → 返回 order_id
+- `captureOrder` server fn(`requireSupabaseAuth`):调 `capture` → 写 `payments` + 更新 `disputes.paid`
+- `/api/public/paypal-webhook` server route:验签(`/v1/notifications/verify-webhook-signature`) → 事件 `PAYMENT.CAPTURE.COMPLETED` 幂等入库
 
-2. **新建 `src/lib/scrape.functions.ts`**
-   - `export const scrapeUrl = createServerFn({ method: 'POST' }).inputValidator(z.object({ url, source })).handler(...)`
-   - source ∈ {`trip`, `sg_cccs`} → 调 `scraping-browser.server.ts`
-   - 其他 source → fallback 到现有 Web Unlocker HTTP path（直接在 server function 里 fetch Bright Data Web Unlocker REST）
-   - 写入同一张 `scrape_cache` 表（已有）
+### 3. 前端
+- `PaywallGate.tsx`:未付费时 blur + CTA
+- `PayPalCheckoutButton.tsx`:用 `@paypal/react-paypal-js`,`createOrder` / `onApprove` 调 server fn
+- 修改 `analysis.$disputeId.tsx`:读 `paid` 字段,包住 3 个高价值区块;capture 后 `router.invalidate()`
 
-3. **改造 `supabase/functions/analyze-dispute`**
-   - 当需要 `trip` / `sg_cccs` 的 HTML 时，从 edge function 里 `fetch()` 调用上面的 TanStack server route（同域，无 CORS）
-   - 其他 source 继续走 edge function 内现有的 Web Unlocker 路径，不动
+### 4. Secrets(实施阶段用 `add_secret` 打开安全表单)
+- `PAYPAL_CLIENT_ID`
+- `PAYPAL_CLIENT_SECRET`
+- `PAYPAL_WEBHOOK_ID`
+- `PAYPAL_ENV`(`sandbox` / `live`)
 
-4. **保留 fallback**
-   - 如果 Cloudflare WebSocket upgrade 也意外失败（罕见但要兜底），server function 返回 `{ error: 'browser_unreachable' }`，`analyze-dispute` 回落到 `knowledge.ts` 本地法律基线 + AI 推理（即你已有的 Trip.com 兜底逻辑）
+### 5. 定价
+默认 USD $9.90 / 案件,金额与币种存 DB 便于后续本地化。
 
-5. **实测验证**
-   - 清 `scrape_cache` 中 `trip` / `sg_cccs` 行
-   - 在前端跑一次完整 dispute 分析，检查 Worker 日志确认 mode=`scraping_browser_cf`、`html_size > 50KB`
-   - 同时确认 `sg_case` 仍走 Web Unlocker 不受影响
+## 明确不做
+- 订阅 / 会员 / 次卡
+- 平台代收商家退款转付用户(合规复杂)
+- 提交前付费墙(伤转化)
+- 改动 AI 分析本身
 
-## 风险与边界
+## 需要你确认
 
-- Cloudflare Worker 的 outbound WebSocket 有 ~30s CPU 时间上限。Bright Data Scraping Browser 单次请求 15–30s 在范围内，但如果目标站慢，可能踩边。会在 server function 里设 25s navigation 超时主动放弃。
-- Workers WebSocket API 是同步消息模型（`ws.addEventListener('message', ...)`），不是 Node `ws` 库；CDP 客户端要自己手写 id→Promise 映射，约 80 行代码。
-- 不动 `bright-data-service.ts` 里 Web Unlocker 的部分，避免回归 `sg_case` 这个已经能跑通的链路。
+1. 单价 **$9.90** 可以吗?
+2. **PayPal Business 账号 + Developer App** 你已经有了吗?没有的话,进 build 后我先给申请步骤再让你填 secret。
 
-## 不做的事
-
-- 不写 raw TLS + 手搓 WebSocket frame（你之前否决过类似复杂度的方案）
-- 不接 Firecrawl（你明确要求继续用 Bright Data）
-- 不改 Bright Data zone 类型（Browser API 就是对的）
+这两点回 OK 就开工。
