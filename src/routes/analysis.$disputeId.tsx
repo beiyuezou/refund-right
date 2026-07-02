@@ -359,6 +359,11 @@ function AnalysisPage() {
           </section>
 
           {/* Leverage points */}
+          <PaywallGate
+            paid={dispute.paid}
+            disputeId={dispute.id}
+            onPaid={load}
+          >
           <section className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-card">
             <h2 className="text-lg font-semibold text-primary">{t("analysis.leverage")}</h2>
             <p className="text-sm text-muted-foreground mt-1">{t("analysis.leverageSub")}</p>
@@ -376,8 +381,14 @@ function AnalysisPage() {
               ))}
             </ul>
           </section>
+          </PaywallGate>
 
           {/* Draft email */}
+          <PaywallGate
+            paid={dispute.paid}
+            disputeId={dispute.id}
+            onPaid={load}
+          >
           <section className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-card">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-2 flex-wrap">
@@ -479,6 +490,7 @@ function AnalysisPage() {
               <Check className="h-3.5 w-3.5 text-accent" /> {t("analysis.autoSaved")}
             </p>
           </section>
+          </PaywallGate>
         </>
       )}
 
