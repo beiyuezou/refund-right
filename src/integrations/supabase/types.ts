@@ -148,6 +148,8 @@ export type Database = {
           currency: string | null
           id: string
           incident_date: string | null
+          paid: boolean
+          paid_at: string | null
           status: string
           story: string
           updated_at: string
@@ -162,6 +164,8 @@ export type Database = {
           currency?: string | null
           id?: string
           incident_date?: string | null
+          paid?: boolean
+          paid_at?: string | null
           status?: string
           story: string
           updated_at?: string
@@ -176,6 +180,8 @@ export type Database = {
           currency?: string | null
           id?: string
           incident_date?: string | null
+          paid?: boolean
+          paid_at?: string | null
           status?: string
           story?: string
           updated_at?: string
@@ -212,6 +218,56 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      payments: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          currency: string
+          dispute_id: string
+          id: string
+          paypal_order_id: string
+          provider: string
+          raw_payload: Json | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          currency?: string
+          dispute_id: string
+          id?: string
+          paypal_order_id: string
+          provider?: string
+          raw_payload?: Json | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          currency?: string
+          dispute_id?: string
+          id?: string
+          paypal_order_id?: string
+          provider?: string
+          raw_payload?: Json | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_dispute_id_fkey"
+            columns: ["dispute_id"]
+            isOneToOne: false
+            referencedRelation: "disputes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {

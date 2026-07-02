@@ -19,6 +19,7 @@ import { Route as ApiTtsRouteImport } from './routes/api/tts'
 import { Route as ApiTranscribeAudioRouteImport } from './routes/api/transcribe-audio'
 import { Route as AnalysisDisputeIdRouteImport } from './routes/analysis.$disputeId'
 import { Route as ApiPublicScrapeBrowserRouteImport } from './routes/api/public/scrape-browser'
+import { Route as ApiPublicPaypalWebhookRouteImport } from './routes/api/public/paypal-webhook'
 
 const KnowledgeRoute = KnowledgeRouteImport.update({
   id: '/knowledge',
@@ -70,6 +71,11 @@ const ApiPublicScrapeBrowserRoute = ApiPublicScrapeBrowserRouteImport.update({
   path: '/api/public/scrape-browser',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicPaypalWebhookRoute = ApiPublicPaypalWebhookRouteImport.update({
+  id: '/api/public/paypal-webhook',
+  path: '/api/public/paypal-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -81,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/api/tts': typeof ApiTtsRoute
   '/claim/$category': typeof ClaimCategoryRoute
   '/knowledge/$slug': typeof KnowledgeSlugRoute
+  '/api/public/paypal-webhook': typeof ApiPublicPaypalWebhookRoute
   '/api/public/scrape-browser': typeof ApiPublicScrapeBrowserRoute
 }
 export interface FileRoutesByTo {
@@ -93,6 +100,7 @@ export interface FileRoutesByTo {
   '/api/tts': typeof ApiTtsRoute
   '/claim/$category': typeof ClaimCategoryRoute
   '/knowledge/$slug': typeof KnowledgeSlugRoute
+  '/api/public/paypal-webhook': typeof ApiPublicPaypalWebhookRoute
   '/api/public/scrape-browser': typeof ApiPublicScrapeBrowserRoute
 }
 export interface FileRoutesById {
@@ -106,6 +114,7 @@ export interface FileRoutesById {
   '/api/tts': typeof ApiTtsRoute
   '/claim/$category': typeof ClaimCategoryRoute
   '/knowledge/$slug': typeof KnowledgeSlugRoute
+  '/api/public/paypal-webhook': typeof ApiPublicPaypalWebhookRoute
   '/api/public/scrape-browser': typeof ApiPublicScrapeBrowserRoute
 }
 export interface FileRouteTypes {
@@ -120,6 +129,7 @@ export interface FileRouteTypes {
     | '/api/tts'
     | '/claim/$category'
     | '/knowledge/$slug'
+    | '/api/public/paypal-webhook'
     | '/api/public/scrape-browser'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -132,6 +142,7 @@ export interface FileRouteTypes {
     | '/api/tts'
     | '/claim/$category'
     | '/knowledge/$slug'
+    | '/api/public/paypal-webhook'
     | '/api/public/scrape-browser'
   id:
     | '__root__'
@@ -144,6 +155,7 @@ export interface FileRouteTypes {
     | '/api/tts'
     | '/claim/$category'
     | '/knowledge/$slug'
+    | '/api/public/paypal-webhook'
     | '/api/public/scrape-browser'
   fileRoutesById: FileRoutesById
 }
@@ -156,6 +168,7 @@ export interface RootRouteChildren {
   ApiTranscribeAudioRoute: typeof ApiTranscribeAudioRoute
   ApiTtsRoute: typeof ApiTtsRoute
   ClaimCategoryRoute: typeof ClaimCategoryRoute
+  ApiPublicPaypalWebhookRoute: typeof ApiPublicPaypalWebhookRoute
   ApiPublicScrapeBrowserRoute: typeof ApiPublicScrapeBrowserRoute
 }
 
@@ -231,6 +244,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicScrapeBrowserRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/paypal-webhook': {
+      id: '/api/public/paypal-webhook'
+      path: '/api/public/paypal-webhook'
+      fullPath: '/api/public/paypal-webhook'
+      preLoaderRoute: typeof ApiPublicPaypalWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -255,17 +275,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiTranscribeAudioRoute: ApiTranscribeAudioRoute,
   ApiTtsRoute: ApiTtsRoute,
   ClaimCategoryRoute: ClaimCategoryRoute,
+  ApiPublicPaypalWebhookRoute: ApiPublicPaypalWebhookRoute,
   ApiPublicScrapeBrowserRoute: ApiPublicScrapeBrowserRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
