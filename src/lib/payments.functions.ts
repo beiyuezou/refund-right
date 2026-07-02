@@ -5,6 +5,17 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 const PRICE_CENTS = 990; // $9.90
 const CURRENCY = "USD";
 
+export const getPaypalPublicConfig = createServerFn({ method: "GET" }).handler(
+  async () => {
+    return {
+      clientId: process.env.PAYPAL_CLIENT_ID ?? "",
+      env: (process.env.PAYPAL_ENV ?? "sandbox").toLowerCase(),
+      currency: CURRENCY,
+      amountCents: PRICE_CENTS,
+    };
+  },
+);
+
 function paypalBase(): string {
   const env = (process.env.PAYPAL_ENV ?? "sandbox").toLowerCase();
   return env === "live"
