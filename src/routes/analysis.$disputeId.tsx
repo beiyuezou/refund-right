@@ -35,6 +35,7 @@ import { type CategoryKey } from "@/lib/categories";
 import { PlayAudioButton } from "@/components/PlayAudioButton";
 import { useServerFn } from "@tanstack/react-start";
 import { saveDraftEmail } from "@/lib/analysis.functions";
+import { PaywallGate } from "@/components/PaywallGate";
 
 export const Route = createFileRoute("/analysis/$disputeId")({
   head: () => ({
@@ -63,6 +64,7 @@ type Dispute = {
   currency: string | null;
   status: string;
   created_at: string;
+  paid: boolean;
 };
 
 type LeveragePoint = { title: string; detail: string };
@@ -100,7 +102,7 @@ function AnalysisPage() {
       supabase
         .from("disputes")
         .select(
-          "id, category, country, city, incident_date, story, amount, currency, status, created_at",
+          "id, category, country, city, incident_date, story, amount, currency, status, created_at, paid",
         )
         .eq("id", disputeId)
         .maybeSingle(),
