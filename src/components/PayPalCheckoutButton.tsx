@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import {
   createPaypalOrder,
   capturePaypalOrder,
+  getPaypalPublicConfig,
 } from "@/lib/payments.functions";
 
 type Props = {
@@ -17,8 +18,23 @@ export function PayPalCheckoutButton({ disputeId, onPaid }: Props) {
   const { i18n } = useTranslation();
   const createOrder = useServerFn(createPaypalOrder);
   const captureOrder = useServerFn(capturePaypalOrder);
+  const getConfig = useServerFn(getPaypalPublicConfig);
+  const [clientId, setClientId] = useState<string | null>(null);
+  const [configError, setConfigError] = useState(false);
 
-  const clientId = import.meta.env.VITE_PAYPAL_CLIENT_ID as string | undefined;
+  useEffect(() => {
+    let cancelled = false;
+    getConfig()
+      .then((c) => {
+        if (cancelled) return;
+        if (c.clientId) setClientId(c.clientId);
+        else setConfigError(true);
+      })
+      .catch(() => !cancelled && setConfigError(true));
+    return () => {
+      cancelled = true;
+    };
+  }, [getConfig]);
 
   const options = useMemo(
     () => ({
@@ -30,10 +46,18 @@ export function PayPalCheckoutButton({ disputeId, onPaid }: Props) {
     [clientId, i18n.language],
   );
 
-  if (!clientId) {
+  if (configError) {
     return (
       <p className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
-        PayPal is not configured yet. Please set VITE_PAYPAL_CLIENT_ID.
+        PayPal is not configured yet. Please add PAYPAL_CLIENT_ID in project settings.
+      </p>
+    );
+  }
+
+  if (!clientId) {
+    return (
+      <p className="text-xs text-muted-foreground text-center py-4">
+        Loading PayPal…
       </p>
     );
   }
