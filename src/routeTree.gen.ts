@@ -9,26 +9,21 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as KnowledgeRouteImport } from './routes/knowledge'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as KnowledgeSlugRouteImport } from './routes/knowledge.$slug'
-import { Route as ClaimCategoryRouteImport } from './routes/claim.$category'
-import { Route as ApiTtsRouteImport } from './routes/api/tts'
-import { Route as ApiTranscribeAudioRouteImport } from './routes/api/transcribe-audio'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as KnowledgeRouteImport } from './routes/knowledge'
 import { Route as AnalysisDisputeIdRouteImport } from './routes/analysis.$disputeId'
-import { Route as ApiPublicScrapeBrowserRouteImport } from './routes/api/public/scrape-browser'
+import { Route as ApiTranscribeAudioRouteImport } from './routes/api/transcribe-audio'
+import { Route as ApiTtsRouteImport } from './routes/api/tts'
+import { Route as ClaimCategoryRouteImport } from './routes/claim.$category'
+import { Route as KnowledgeSlugRouteImport } from './routes/knowledge.$slug'
 import { Route as ApiPublicPaypalWebhookRouteImport } from './routes/api/public/paypal-webhook'
+import { Route as ApiPublicScrapeBrowserRouteImport } from './routes/api/public/scrape-browser'
 
-const KnowledgeRoute = KnowledgeRouteImport.update({
-  id: '/knowledge',
-  path: '/knowledge',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
@@ -36,29 +31,14 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
-const KnowledgeSlugRoute = KnowledgeSlugRouteImport.update({
-  id: '/$slug',
-  path: '/$slug',
-  getParentRoute: () => KnowledgeRoute,
-} as any)
-const ClaimCategoryRoute = ClaimCategoryRouteImport.update({
-  id: '/claim/$category',
-  path: '/claim/$category',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiTtsRoute = ApiTtsRouteImport.update({
-  id: '/api/tts',
-  path: '/api/tts',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiTranscribeAudioRoute = ApiTranscribeAudioRouteImport.update({
-  id: '/api/transcribe-audio',
-  path: '/api/transcribe-audio',
+const KnowledgeRoute = KnowledgeRouteImport.update({
+  id: '/knowledge',
+  path: '/knowledge',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AnalysisDisputeIdRoute = AnalysisDisputeIdRouteImport.update({
@@ -66,14 +46,34 @@ const AnalysisDisputeIdRoute = AnalysisDisputeIdRouteImport.update({
   path: '/analysis/$disputeId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicScrapeBrowserRoute = ApiPublicScrapeBrowserRouteImport.update({
-  id: '/api/public/scrape-browser',
-  path: '/api/public/scrape-browser',
+const ApiTranscribeAudioRoute = ApiTranscribeAudioRouteImport.update({
+  id: '/api/transcribe-audio',
+  path: '/api/transcribe-audio',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTtsRoute = ApiTtsRouteImport.update({
+  id: '/api/tts',
+  path: '/api/tts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClaimCategoryRoute = ClaimCategoryRouteImport.update({
+  id: '/claim/$category',
+  path: '/claim/$category',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const KnowledgeSlugRoute = KnowledgeSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => KnowledgeRoute,
 } as any)
 const ApiPublicPaypalWebhookRoute = ApiPublicPaypalWebhookRouteImport.update({
   id: '/api/public/paypal-webhook',
   path: '/api/public/paypal-webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicScrapeBrowserRoute = ApiPublicScrapeBrowserRouteImport.update({
+  id: '/api/public/scrape-browser',
+  path: '/api/public/scrape-browser',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -174,18 +174,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/knowledge': {
-      id: '/knowledge'
-      path: '/knowledge'
-      fullPath: '/knowledge'
-      preLoaderRoute: typeof KnowledgeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -195,39 +188,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/knowledge/$slug': {
-      id: '/knowledge/$slug'
-      path: '/$slug'
-      fullPath: '/knowledge/$slug'
-      preLoaderRoute: typeof KnowledgeSlugRouteImport
-      parentRoute: typeof KnowledgeRoute
-    }
-    '/claim/$category': {
-      id: '/claim/$category'
-      path: '/claim/$category'
-      fullPath: '/claim/$category'
-      preLoaderRoute: typeof ClaimCategoryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/tts': {
-      id: '/api/tts'
-      path: '/api/tts'
-      fullPath: '/api/tts'
-      preLoaderRoute: typeof ApiTtsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/transcribe-audio': {
-      id: '/api/transcribe-audio'
-      path: '/api/transcribe-audio'
-      fullPath: '/api/transcribe-audio'
-      preLoaderRoute: typeof ApiTranscribeAudioRouteImport
+    '/knowledge': {
+      id: '/knowledge'
+      path: '/knowledge'
+      fullPath: '/knowledge'
+      preLoaderRoute: typeof KnowledgeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/analysis/$disputeId': {
@@ -237,18 +209,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AnalysisDisputeIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/scrape-browser': {
-      id: '/api/public/scrape-browser'
-      path: '/api/public/scrape-browser'
-      fullPath: '/api/public/scrape-browser'
-      preLoaderRoute: typeof ApiPublicScrapeBrowserRouteImport
+    '/api/transcribe-audio': {
+      id: '/api/transcribe-audio'
+      path: '/api/transcribe-audio'
+      fullPath: '/api/transcribe-audio'
+      preLoaderRoute: typeof ApiTranscribeAudioRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/api/tts': {
+      id: '/api/tts'
+      path: '/api/tts'
+      fullPath: '/api/tts'
+      preLoaderRoute: typeof ApiTtsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/claim/$category': {
+      id: '/claim/$category'
+      path: '/claim/$category'
+      fullPath: '/claim/$category'
+      preLoaderRoute: typeof ClaimCategoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/knowledge/$slug': {
+      id: '/knowledge/$slug'
+      path: '/$slug'
+      fullPath: '/knowledge/$slug'
+      preLoaderRoute: typeof KnowledgeSlugRouteImport
+      parentRoute: typeof KnowledgeRoute
     }
     '/api/public/paypal-webhook': {
       id: '/api/public/paypal-webhook'
       path: '/api/public/paypal-webhook'
       fullPath: '/api/public/paypal-webhook'
       preLoaderRoute: typeof ApiPublicPaypalWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/scrape-browser': {
+      id: '/api/public/scrape-browser'
+      path: '/api/public/scrape-browser'
+      fullPath: '/api/public/scrape-browser'
+      preLoaderRoute: typeof ApiPublicScrapeBrowserRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
