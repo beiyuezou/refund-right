@@ -260,6 +260,9 @@ function AnalysisPage() {
                 {dispute.incident_date ? ` · ${dispute.incident_date}` : ""}
                 {dispute.amount ? ` · ${dispute.amount} ${dispute.currency ?? ""}` : ""}
               </p>
+              <p className="mt-1 inline-flex items-center rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
+                Powered by NVIDIA Nemotron · Nebius Token Factory
+              </p>
             </div>
           </div>
           {analysis && (
