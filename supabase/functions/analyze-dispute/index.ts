@@ -423,3 +423,180 @@ function json(payload: unknown, status = 200) {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 }
+
+type Parsed = AnalysisShape;
+interface MasterRow extends Parsed {
+  id: string;
+  sources: unknown;
+  language: string;
+}
+
+const PRODUCE_TOOLS = [
+  {
+    type: "function",
+    function: {
+      name: "produce_analysis",
+      description: "Return a structured rights analysis for the traveler's dispute.",
+      parameters: {
+        type: "object",
+        properties: {
+          risk_level: {
+            type: "string",
+            enum: ["strong", "moderate", "weak"],
+            description:
+              "Strength of the consumer's case. 'strong' = likely to win, 'moderate' = winnable with effort, 'weak' = uphill.",
+          },
+          confidence: {
+            type: "integer",
+            minimum: 0,
+            maximum: 100,
+            description: "Confidence in this assessment, 0-100, following the rubric.",
+          },
+          recommendation: {
+            type: "string",
+            description:
+              "300-500 word professional legal-style analysis: applicable consumer rights for this jurisdiction, how the supplier's conduct measures up, and the suggested escalation path (platform → regulator → tribunal).",
+          },
+          leverage_points: {
+            type: "array",
+            minItems: 3,
+            maxItems: 7,
+            description:
+              "Strongest arguments and tactics the user can deploy. MUST explicitly name any deceptive platform behavior detected.",
+            items: {
+              type: "object",
+              properties: { title: { type: "string" }, detail: { type: "string" } },
+              required: ["title", "detail"],
+              additionalProperties: false,
+            },
+          },
+          draft_email: {
+            type: "string",
+            description:
+              "A complete formal complaint email. Begin with 'Subject: ...'. Use placeholders like [RECIPIENT NAME], [BOOKING REF], [DATE]. Reference applicable statutes and set a 14-day deadline.",
+          },
+        },
+        required: ["risk_level", "confidence", "recommendation", "leverage_points", "draft_email"],
+        additionalProperties: false,
+      },
+    },
+  },
+];
+
+async function callModel(
+  system: string,
+  user: string,
+  apiKey: string,
+  model: string,
+): Promise<
+  | { ok: true; parsed: Parsed }
+  | { ok: false; status: number; error: string; code?: string }
+> {
+  const aiRes = await fetch("https://api.tokenfactory.nebius.com/v1/chat/completions", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model,
+      max_tokens: 8000,
+      temperature: 0,
+      seed: 42,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+      tools: PRODUCE_TOOLS,
+      tool_choice: { type: "function", function: { name: "produce_analysis" } },
+    }),
+  });
+  if (!aiRes.ok) {
+    const errText = await aiRes.text();
+    console.error("AI error:", aiRes.status, errText.slice(0, 1000));
+    if (aiRes.status === 429) {
+      return { ok: false, status: 429, error: "Rate limit exceeded. Please wait a moment and try again." };
+    }
+    if (aiRes.status === 402) {
+      return {
+        ok: false,
+        status: 503,
+        error: "Analysis service is temporarily unavailable. Please try again later.",
+        code: "service_unavailable",
+      };
+    }
+    return { ok: false, status: 500, error: "AI analysis failed. Please try again." };
+  }
+  const aiJson = await aiRes.json();
+  const msg = aiJson?.choices?.[0]?.message;
+  let rawArgs: string | undefined = msg?.tool_calls?.[0]?.function?.arguments;
+  if (!rawArgs && typeof msg?.content === "string") {
+    const cleaned = msg.content.replace(/<think>[\s\S]*?<\/think>/g, "");
+    const m = cleaned.match(/\{[\s\S]*\}/);
+    if (m) rawArgs = m[0];
+  }
+  if (!rawArgs) {
+    console.error("No tool call in AI response", JSON.stringify(aiJson).slice(0, 2000));
+    return { ok: false, status: 500, error: "Invalid AI response." };
+  }
+  try {
+    const parsed = JSON.parse(rawArgs) as Parsed;
+    if (
+      !["strong", "moderate", "weak"].includes(parsed.risk_level) ||
+      typeof parsed.recommendation !== "string" ||
+      !Array.isArray(parsed.leverage_points) ||
+      typeof parsed.draft_email !== "string"
+    ) throw new Error("schema mismatch");
+    parsed.confidence = Number(parsed.confidence) || 0;
+    return { ok: true, parsed };
+  } catch (e) {
+    console.error("Failed to parse tool call args", e);
+    return { ok: false, status: 500, error: "Invalid AI response format." };
+  }
+}
+
+async function translateAnalysis(
+  master: MasterRow,
+  language: "en" | "zh",
+  apiKey: string,
+  model: string,
+): Promise<
+  | { ok: true; result: Parsed; mismatches: string[] }
+  | { ok: false; status: number; error: string }
+> {
+  const target = language === "zh" ? "Simplified Chinese (简体中文)" : "English";
+  const system = `You are a professional legal translator. Translate an existing legal analysis into ${target}. You are NOT re-analysing the case.
+STRICT RULES:
+- Keep risk_level and confidence EXACTLY as given.
+- Keep EXACTLY ${master.leverage_points.length} leverage_points, in the same order; translate each title and detail faithfully.
+- Do not add, remove or change any statute, section number, amount, date, deadline, regulator or argument.
+- ${
+    language === "zh"
+      ? "The draft_email MUST be BILINGUAL: keep every English line exactly as given and put the Chinese translation in square brackets on the next line (Subject line included)."
+      : "Write everything in English only."
+  }
+- Keep brand names, URLs, emails, dates and numbers in ASCII.
+${glossaryBlock()}
+Respond by calling produce_analysis.`;
+  const user =
+    "Analysis to translate (JSON):\n" +
+    JSON.stringify({
+      risk_level: master.risk_level,
+      confidence: master.confidence,
+      recommendation: master.recommendation,
+      leverage_points: master.leverage_points,
+      draft_email: master.draft_email,
+    });
+  let last: { result: Parsed; mismatches: string[] } | null = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const prompt =
+      attempt === 0 || !last
+        ? user
+        : `${user}\n\nYour previous translation changed the structure (${last.mismatches.join(", ")}). Translate again, faithfully, keeping every argument and citation.`;
+    const call = await callModel(system, prompt, apiKey, model);
+    if (!call.ok) return call;
+    last = enforceTranslation(master, call.parsed);
+    if (last.mismatches.length === 0) break;
+  }
+  if (!last || last.mismatches.includes("leverage_count")) {
+    return { ok: false, status: 500, error: "Translation failed. Please try again." };
+  }
+  return { ok: true, ...last };
+}
