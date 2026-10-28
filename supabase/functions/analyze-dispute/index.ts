@@ -9,6 +9,8 @@ import {
   fetchOtaRules,
 } from "../_shared/bright-data-service.ts";
 import { searchLegalSources, type TavilySource } from "../_shared/tavily-search.ts";
+import { clampConfidence, enforceTranslation, type AnalysisShape } from "../_shared/consistency.ts";
+import { glossaryBlock } from "../_shared/statute-glossary.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -72,6 +74,10 @@ SYNTHESIS RULES:
   • "strong" — clear documentary evidence + named statute/regulator likely to side with the consumer.
   • "moderate" — winnable case but with evidence gaps or jurisdictional ambiguity.
   • "weak" — limited evidence, lawful supplier conduct, or hostile jurisdiction.
+- Confidence rubric (deterministic — same facts must give the same score): start at the midpoint of the band for the chosen risk level (strong 75–95, moderate 50–74, weak 20–49); +5 each for documentary evidence referenced, a written refusal from the supplier, a statute that directly covers the conduct, an amount within small-claims limits; −5 each for a consumer-caused error, clearly disclosed non-refundable terms, missing booking/receipt details. Stay inside the band.
+- Produce exactly 4 leverage_points unless the facts genuinely support fewer (min 3) or more (max 7).
+- Cite a section number ONLY if it appears verbatim in the REFERENCE text supplied; otherwise cite the Act by name only.
+${glossaryBlock()}
 - NEVER invent specific section numbers, hotline numbers, or compensation amounts you are not confident in. If the user's facts are thin, say so inside the recommendation and ask them to add specific details rather than overclaim.
 
 ${langClause}
