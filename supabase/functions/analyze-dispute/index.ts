@@ -144,11 +144,12 @@ Deno.serve(async (req) => {
     }
     await admin.from("rate_limit_events").insert({ user_id: userId, action: "analyze" });
 
-    const body = (await req.json()) as { dispute_id: string; language?: string };
+    const body = (await req.json()) as { dispute_id: string; language?: string; mode?: string };
     if (!body?.dispute_id) {
       return json({ error: "dispute_id required" }, 400);
     }
     const language: "en" | "zh" = body.language === "zh" ? "zh" : "en";
+    const mode: "analyze" | "translate" = body.mode === "translate" ? "translate" : "analyze";
 
     // Load dispute (RLS ensures it's owned by caller)
     const { data: dispute, error: dErr } = await supabase
@@ -162,6 +163,59 @@ Deno.serve(async (req) => {
     }
     if (dispute.user_id !== userId) {
       return json({ error: "Forbidden" }, 403);
+    }
+
+    // Hackathon requirement: NVIDIA open model served on Nebius Token Factory.
+    const model = "nvidia/nemotron-3-super-120b-a12b";
+
+    // ---------- Translate mode: reuse the master analysis ----------
+    if (mode === "translate") {
+      const { data: master } = await supabase
+        .from("dispute_analyses")
+        .select("id, risk_level, confidence, recommendation, leverage_points, draft_email, sources, language")
+        .eq("dispute_id", dispute.id)
+        .is("parent_analysis_id", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!master) return json({ error: "No analysis to translate." }, 404);
+      if (master.language === language) return json({ analysis_id: master.id });
+      const { data: existing } = await supabase
+        .from("dispute_analyses")
+        .select("id")
+        .eq("parent_analysis_id", master.id)
+        .eq("language", language)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (existing) return json({ analysis_id: existing.id });
+      const t = await translateAnalysis(master as unknown as MasterRow, language, NEBIUS_API_KEY, model);
+      if (!t.ok) return json({ error: t.error }, t.status);
+      const { data: row, error: insErr } = await supabase
+        .from("dispute_analyses")
+        .insert({
+          dispute_id: dispute.id,
+          user_id: userId,
+          ...t.result,
+          sources: master.sources,
+          model,
+          language,
+          parent_analysis_id: master.id,
+        })
+        .select("id")
+        .single();
+      if (insErr || !row) {
+        console.error("Insert translation error:", insErr);
+        return json({ error: "Failed to save analysis." }, 500);
+      }
+      await admin.from("audit_logs").insert({
+        user_id: userId,
+        action: "analysis.translate",
+        resource_type: "dispute_analyses",
+        resource_id: row.id,
+        metadata: { dispute_id: dispute.id, master_id: master.id, language, mismatches: t.mismatches },
+      });
+      return json({ analysis_id: row.id });
     }
 
     await supabase.from("disputes").update({ status: "analyzing" }).eq("id", dispute.id);
@@ -186,8 +240,6 @@ Deno.serve(async (req) => {
       groundTruthMeta = { ota: detected.ota, source: res.source };
     }
 
-    // Ground Truth (legal): fetch jurisdictional consumer-protection sources in
-    // parallel so the legal reasoning is verifiable against external text.
     const tavilyPromise: Promise<TavilySource[]> = searchLegalSources(
       { country: dispute.country, category: dispute.category, ota: detected?.ota },
       admin,
@@ -211,14 +263,22 @@ Deno.serve(async (req) => {
     }
 
     const tavilySources = await tavilyPromise;
-    const userPrompt = buildUserPrompt(payload, language, {
+    // The master analysis is always produced in English, deterministically;
+    // other languages are translations of it so verdicts never diverge.
+    const userPrompt = buildUserPrompt(payload, "en", {
       ota: groundTruthMeta.ota,
       content: groundTruth,
     }, legalResults, tavilySources);
-    const systemPrompt = buildSystemPrompt(language);
-    // Hackathon requirement: NVIDIA open model served on Nebius Token Factory.
-    const model = "nvidia/nemotron-3-super-120b-a12b";
+    const systemPrompt = buildSystemPrompt("en");
 
+    const call = await callModel(systemPrompt, userPrompt, NEBIUS_API_KEY, model);
+    if (!call.ok) {
+      await supabase.from("disputes").update({ status: "failed" }).eq("id", dispute.id);
+      return json({ error: call.error, ...(call.code ? { code: call.code } : {}) }, call.status);
+    }
+    const parsed = call.parsed;
+    parsed.confidence = clampConfidence(parsed.risk_level, parsed.confidence);
+    if (false) {
     const aiRes = await fetch("https://api.tokenfactory.nebius.com/v1/chat/completions", {
       method: "POST",
       headers: {
