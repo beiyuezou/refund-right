@@ -46,10 +46,10 @@ export async function searchLegalSources(
   try {
     const { data: cached } = await admin
       .from("ota_rules_cache")
-      .select("raw_content, updated_at")
+      .select("raw_content, fetched_at")
       .eq("ota_name", cacheName)
       .maybeSingle();
-    if (cached && Date.now() - new Date(cached.updated_at).getTime() < 7 * 86400_000) {
+    if (cached && Date.now() - new Date(cached.fetched_at).getTime() < 7 * 86400_000) {
       return JSON.parse(cached.raw_content) as TavilySource[];
     }
   } catch { /* ignore */ }
@@ -93,10 +93,11 @@ export async function searchLegalSources(
           ota_name: cacheName,
           raw_content: JSON.stringify(sources),
           source_url: "https://api.tavily.com/search",
-          hash,
+          content_hash: hash,
+          fetched_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         },
-        { onConflict: "ota_name" },
+        { onConflict: "ota_name,source_url" },
       );
     }
     return sources;
