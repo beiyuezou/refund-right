@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { useAuth, signOut } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 import { Button } from "@/components/ui/button";
+import { LANGUAGES } from "@/lib/i18n";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,7 +16,7 @@ import {
 
 function LanguageSwitcher() {
   const { i18n, t } = useTranslation();
-  const current = i18n.language?.startsWith("zh") ? "zh" : "en";
+  const current = i18n.language?.split("-")[0] ?? "en";
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -28,19 +29,16 @@ function LanguageSwitcher() {
           <Languages className="h-4 w-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="min-w-32">
-        <DropdownMenuItem
-          onClick={() => i18n.changeLanguage("en")}
-          className={current === "en" ? "font-semibold text-accent" : ""}
-        >
-          English
-        </DropdownMenuItem>
-        <DropdownMenuItem
-          onClick={() => i18n.changeLanguage("zh")}
-          className={current === "zh" ? "font-semibold text-accent" : ""}
-        >
-          中文
-        </DropdownMenuItem>
+      <DropdownMenuContent align="end" className="min-w-44">
+        {LANGUAGES.map((l) => (
+          <DropdownMenuItem
+            key={l.code}
+            onClick={() => i18n.changeLanguage(l.code)}
+            className={current === l.code ? "font-semibold text-accent" : ""}
+          >
+            {l.label}
+          </DropdownMenuItem>
+        ))}
       </DropdownMenuContent>
     </DropdownMenu>
   );
