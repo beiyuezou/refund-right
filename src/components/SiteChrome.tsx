@@ -107,7 +107,7 @@ export function SiteHeader() {
             <Shield className="h-5 w-5" strokeWidth={2.4} />
           </span>
           <span className="font-display font-bold text-lg tracking-tight text-primary">
-            Refund<span className="text-accent">Right</span>
+            Refund<span className="text-accent">Rights</span>
           </span>
         </Link>
 
@@ -160,7 +160,7 @@ export function SiteFooter() {
               <Shield className="h-4 w-4" strokeWidth={2.4} />
             </span>
             <span className="font-display font-bold text-primary">
-              Refund<span className="text-accent">Right</span>
+              Refund<span className="text-accent">Rights</span>
             </span>
           </div>
           <p className="mt-3 text-sm text-muted-foreground max-w-xs">{t("footer.tagline")}</p>
