@@ -1,67 +1,41 @@
-# PayPal 集成方案:按案件一次性付费解锁分析
+# Tavily 集成方案：为 AI 分析补充"实时法律与政策检索"
 
-## 集成位置(推荐)
+## 推荐集成位置
 
-在 `/analysis/$disputeId` 分析结果页设置付费墙,而不是提交表单前。
-
-理由:
-- 用户填完 3 步向导 + 上传证据后,转化率最高
-- 后台已经跑完完整 AI 分析,前端"遮罩"高价值内容即可
-- 免费预览建立信任:展示"胜算强/中/弱" + 引用法条数量,隐藏正文
-- 一次性付费,无订阅管理复杂度
-
-## 用户流程
+放在 **AI 分析生成之前的"证据检索"环节**，也就是现有 Bright Data 抓取的同一步。
 
 ```text
-Wizard(免费) → 提交 → AI 分析(免费,后台运行)
-        ↓
-分析页免费层:
-  ✓ 结论摘要
-  ✓ 法条名称
-  ✗ 法条正文/金额计算/申诉信正文 (blur)
-        ↓
-点击解锁 → PayPal Smart Buttons(一次性)
-        ↓
-capture 成功 + webhook 兜底 → disputes.paid=true
-        ↓
-分析页刷新 → 全部解锁
+提交申诉 → 分析开始
+   ├─ Bright Data：抓取固定白名单页面（Trip.com 条款、CASE、CCCS 原文）
+   ├─ Tavily（新增）：按案情搜索相关法条、监管公告、平台政策、类似判例/新闻
+   ↓
+合并成"参考资料"→ AI 多专家分析 → 建议 + 论点 + 申诉信（附来源链接）
 ```
 
-## 技术方案
+两者分工：
+- **Bright Data**：已知网址的原文抓取（可靠、可验证）。
+- **Tavily**：不知道网址时的智能搜索（覆盖面广），比如"新加坡 酒店 拒绝入住 退款 CPFTA"。
 
-### 1. 数据库
-- `disputes` 加列:`paid boolean default false`, `paid_at timestamptz`
-- 新表 `payments`(user_id, dispute_id, paypal_order_id unique, amount_cents, currency, status, raw_payload jsonb)
-- RLS + GRANT:用户只 SELECT 自己的;写入只走 service_role
+## 用户能看到的变化
+- 分析页新增 **"参考来源"** 区块：列出 Tavily 找到的 3–6 个来源标题、网站和链接，方便核实。
+- 申诉信和法律论点会引用这些来源，而不是只凭 AI 记忆。
+- 加载动画增加一句提示："正在检索相关法律条款与平台政策…"。
+- 来源列表属于付费内容的一部分（免费层只显示"已检索 N 个来源"）。
 
-### 2. 后端
-- `createOrder` server fn(`requireSupabaseAuth`):校验 dispute 归属 → 调 PayPal `POST /v2/checkout/orders` → 返回 order_id
-- `captureOrder` server fn(`requireSupabaseAuth`):调 `capture` → 写 `payments` + 更新 `disputes.paid`
-- `/api/public/paypal-webhook` server route:验签(`/v1/notifications/verify-webhook-signature`) → 事件 `PAYMENT.CAPTURE.COMPLETED` 幂等入库
+## 安全与可靠性
+- Tavily 密钥只存在服务器端，不进浏览器。
+- 搜索结果优先限定官方域名（政府、监管机构、消费者协会、平台官网），降低垃圾信息。
+- Tavily 超时或失败时自动跳过，分析照常完成，不影响用户。
+- 搜索结果缓存 7 天，相同案情不重复扣费。
+- 每次搜索写入审计日志。
 
-### 3. 前端
-- `PaywallGate.tsx`:未付费时 blur + CTA
-- `PayPalCheckoutButton.tsx`:用 `@paypal/react-paypal-js`,`createOrder` / `onApprove` 调 server fn
-- 修改 `analysis.$disputeId.tsx`:读 `paid` 字段,包住 3 个高价值区块;capture 后 `router.invalidate()`
+## 技术细节
+- 优先使用 Lovable 的 Tavily 连接器（若可用），否则用安全表单保存 `TAVILY_API_KEY`。
+- 在 `analyze-dispute` 中新增 `tavily-search` 模块：根据国家 + 类别 + 平台生成 1–2 条查询，调用 Tavily Search（`search_depth: advanced`，`include_domains` 按国家配置官方域名，8 秒超时）。
+- 与 Bright Data 抓取并行执行，结果拼入 prompt 的 REFERENCE 区块，要求 AI 只引用其中出现的条款。
+- `dispute_analyses` 新增 `sources jsonb` 列保存来源（RLS 沿用本人可读）。
+- 分析页渲染来源列表，中英文文案同步。
 
-### 4. Secrets(实施阶段用 `add_secret` 打开安全表单)
-- `PAYPAL_CLIENT_ID`
-- `PAYPAL_CLIENT_SECRET`
-- `PAYPAL_WEBHOOK_ID`
-- `PAYPAL_ENV`(`sandbox` / `live`)
-
-### 5. 定价
-默认 USD $9.90 / 案件,金额与币种存 DB 便于后续本地化。
-
-## 明确不做
-- 订阅 / 会员 / 次卡
-- 平台代收商家退款转付用户(合规复杂)
-- 提交前付费墙(伤转化)
-- 改动 AI 分析本身
-
-## 需要你确认
-
-1. 单价 **$9.90** 可以吗?
-2. **PayPal Business 账号 + Developer App** 你已经有了吗?没有的话,进 build 后我先给申请步骤再让你填 secret。
-
-这两点回 OK 就开工。
+## 暂不做
+- 用户在页面上自己发起搜索（以后可加"追问"功能）。
+- 替换 Bright Data。
