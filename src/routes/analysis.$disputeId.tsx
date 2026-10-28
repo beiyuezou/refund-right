@@ -127,12 +127,7 @@ function AnalysisPage() {
       const pick =
         master.language === want
           ? master
-          : rows.find((r) => r.parent_analysis_id === master.id && r.language === want) ??
-            // Legacy rows (before translations existed) may match by language directly.
-            (master.language !== want && !rows.some((r) => r.parent_analysis_id)
-              ? rows.find((r) => r.language === want && r.created_at === master.created_at)
-              : undefined) ??
-            master;
+          : rows.find((r) => r.parent_analysis_id === master.id && r.language === want) ?? master;
       setAnalysis(pick as unknown as Analysis);
       setViewLang((pick as { language: "en" | "zh" }).language);
     }
@@ -189,7 +184,7 @@ function AnalysisPage() {
         toast.success(t("analysis.reanalyzing"));
         setEdited(false);
         setEditing(false);
-        await load();
+        await load(lang);
       }
     } finally {
       setRetrying(false);
@@ -321,7 +316,7 @@ function AnalysisPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => requestRerun("en")}
+                onClick={() => switchLanguage("en")}
                 disabled={retrying || editing}
                 className="gap-1.5"
                 title={t("analysis.regenInEnglish")}
@@ -336,7 +331,7 @@ function AnalysisPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => requestRerun("zh")}
+                onClick={() => switchLanguage("zh")}
                 disabled={retrying || editing}
                 className="gap-1.5"
                 title={t("analysis.regenInChinese")}
