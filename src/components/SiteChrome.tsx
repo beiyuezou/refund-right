@@ -107,7 +107,7 @@ export function SiteHeader() {
             <Shield className="h-5 w-5" strokeWidth={2.4} />
           </span>
           <span className="font-display font-bold text-lg tracking-tight text-primary">
-            Refund<span className="text-accent">Right</span>
+            Refund<span className="text-accent">Rights</span>
           </span>
         </Link>
 
