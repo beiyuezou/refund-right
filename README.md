@@ -1,4 +1,4 @@
-# RefundRight
+# RefundRights
 
 AI legal assistant for travel refund disputes in Southeast Asia.
 

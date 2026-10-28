@@ -26,8 +26,8 @@ const en = {
     knowledgeBase: "Knowledge base",
     important: "Important",
     disclaimer:
-      "RefundRight provides general information only and does not constitute legal advice. For binding advice on your specific situation, consult a qualified lawyer in the relevant jurisdiction.",
-    copyright: "© {{year}} RefundRight",
+      "RefundRights provides general information only and does not constitute legal advice. For binding advice on your specific situation, consult a qualified lawyer in the relevant jurisdiction.",
+    copyright: "© {{year}} RefundRights",
     notLegal: "Informational only · Not legal advice",
   },
   home: {
@@ -201,7 +201,7 @@ const en = {
     signinView: "Sign in to view analysis",
     signinViewSub: "Your disputes are saved to your account.",
     disclaimer: "Informational only — not legal advice.",
-    disclaimerBody: "RefundRight cites publicly available consumer-protection rules and is intended to help you assert your rights. For binding advice, consult a qualified lawyer in the relevant jurisdiction.",
+    disclaimerBody: "RefundRights cites publicly available consumer-protection rules and is intended to help you assert your rights. For binding advice, consult a qualified lawyer in the relevant jurisdiction.",
   },
   knowledge: {
     badge: "Knowledge base",
@@ -278,8 +278,8 @@ const zh: typeof en = {
     knowledgeBase: "知识库",
     important: "重要提示",
     disclaimer:
-      "RefundRight 仅提供一般性信息，不构成法律建议。如需针对您具体情况的法律意见，请咨询当地有资质的律师。",
-    copyright: "© {{year}} RefundRight",
+      "RefundRights 仅提供一般性信息，不构成法律建议。如需针对您具体情况的法律意见，请咨询当地有资质的律师。",
+    copyright: "© {{year}} RefundRights",
     notLegal: "仅供参考 · 非法律意见",
   },
   home: {
@@ -451,7 +451,7 @@ const zh: typeof en = {
     signinViewSub: "您的申诉已保存到账户。",
     disclaimer: "仅供参考——非法律意见。",
     disclaimerBody:
-      "RefundRight 引用公开的消费者保护法规，旨在帮助您主张权利。如需具有约束力的建议，请咨询当地有资质的律师。",
+      "RefundRights 引用公开的消费者保护法规，旨在帮助您主张权利。如需具有约束力的建议，请咨询当地有资质的律师。",
   },
   knowledge: {
     badge: "知识库",

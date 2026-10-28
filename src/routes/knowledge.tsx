@@ -7,7 +7,7 @@ import { ARTICLES, type Article } from "@/lib/knowledge";
 export const Route = createFileRoute("/knowledge")({
   head: () => ({
     meta: [
-      { title: "SE Asia traveler rights — Knowledge base · RefundRight" },
+      { title: "SE Asia traveler rights — Knowledge base · RefundRights" },
       {
         name: "description",
         content:
@@ -15,7 +15,7 @@ export const Route = createFileRoute("/knowledge")({
       },
       {
         property: "og:title",
-        content: "SE Asia traveler rights — Knowledge base · RefundRight",
+        content: "SE Asia traveler rights — Knowledge base · RefundRights",
       },
       {
         property: "og:description",
