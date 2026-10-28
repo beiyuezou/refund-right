@@ -8,6 +8,7 @@ import {
   detectLegalSources,
   fetchOtaRules,
 } from "../_shared/bright-data-service.ts";
+import { searchLegalSources, type TavilySource } from "../_shared/tavily-search.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -187,6 +188,11 @@ Deno.serve(async (req) => {
 
     // Ground Truth (legal): fetch jurisdictional consumer-protection sources in
     // parallel so the legal reasoning is verifiable against external text.
+    const tavilyPromise: Promise<TavilySource[]> = searchLegalSources(
+      { country: dispute.country, category: dispute.category, ota: detected?.ota },
+      admin,
+      userId,
+    );
     const legalDetected = detectLegalSources(dispute.country);
     const legalResults: { slug: string; source: string; content: string }[] = [];
     if (legalDetected.length > 0) {
@@ -204,10 +210,11 @@ Deno.serve(async (req) => {
       }
     }
 
+    const tavilySources = await tavilyPromise;
     const userPrompt = buildUserPrompt(payload, language, {
       ota: groundTruthMeta.ota,
       content: groundTruth,
-    }, legalResults);
+    }, legalResults, tavilySources);
     const systemPrompt = buildSystemPrompt(language);
     const model = "google/gemini-3-flash-preview";
 
@@ -348,6 +355,7 @@ Deno.serve(async (req) => {
         recommendation: parsed.recommendation,
         leverage_points: parsed.leverage_points,
         draft_email: parsed.draft_email,
+        sources: tavilySources.map(({ title, url, domain }) => ({ title, url, domain })),
         model,
       })
       .select()
@@ -387,7 +395,14 @@ function buildUserPrompt(
   language: "en" | "zh",
   groundTruth?: { ota?: string; content: string },
   legalSources?: { slug: string; source: string; content: string }[],
+  webSources?: TavilySource[],
 ) {
+  const webBlock =
+    webSources && webSources.length > 0
+      ? "\n### REFERENCE — Web search results from official/platform sites (Tavily):\n" +
+        webSources.map((w, i) => `[S${i + 1}] ${w.title} — ${w.url}\n"""\n${w.content}\n"""`).join("\n") +
+        "\nWhen relying on these, cite them by title or domain. Do NOT invent provisions absent from this text.\n"
+      : "";
   const categoryLabel = {
     hotel: "Hotel issue (deposits, wrong booking, unjustified charges)",
     flight: "Flight disruption (delays, cancellation, missed connection)",
@@ -429,6 +444,7 @@ ${p.story}
 """
 ${groundTruthBlock}
 ${legalBlock}
+${webBlock}
 ${langReminder}
 
 Remember: explicitly name any deceptive platform tactics in leverage_points, and ground your reasoning in the consumer-protection framework of ${p.country}. Respond by invoking produce_analysis.`;

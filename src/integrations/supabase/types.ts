@@ -61,6 +61,7 @@ export type Database = {
           model: string
           recommendation: string
           risk_level: string
+          sources: Json
           user_id: string
         }
         Insert: {
@@ -73,6 +74,7 @@ export type Database = {
           model: string
           recommendation: string
           risk_level: string
+          sources?: Json
           user_id: string
         }
         Update: {
@@ -85,6 +87,7 @@ export type Database = {
           model?: string
           recommendation?: string
           risk_level?: string
+          sources?: Json
           user_id?: string
         }
         Relationships: [

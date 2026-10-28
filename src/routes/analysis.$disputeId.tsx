@@ -76,6 +76,7 @@ type Analysis = {
   recommendation: string;
   leverage_points: LeveragePoint[];
   draft_email: string;
+  sources?: { title: string; url: string; domain: string }[] | null;
   created_at: string;
 };
 
@@ -109,7 +110,7 @@ function AnalysisPage() {
       supabase
         .from("dispute_analyses")
         .select(
-          "id, risk_level, confidence, recommendation, leverage_points, draft_email, created_at",
+          "id, risk_level, confidence, recommendation, leverage_points, draft_email, sources, created_at",
         )
         .eq("dispute_id", disputeId)
         .order("created_at", { ascending: false })
@@ -381,7 +382,28 @@ function AnalysisPage() {
               ))}
             </ul>
           </section>
+          {Array.isArray(analysis.sources) && analysis.sources.length > 0 && (
+            <section className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-card">
+              <h2 className="text-lg font-semibold text-primary">{t("analysis.sources")}</h2>
+              <p className="text-sm text-muted-foreground mt-1">{t("analysis.sourcesSub")}</p>
+              <ul className="mt-4 space-y-2">
+                {analysis.sources.map((s, i) => (
+                  <li key={i} className="rounded-lg border border-border bg-secondary/30 p-3">
+                    <a href={s.url} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">
+                      {s.title || s.domain}
+                    </a>
+                    <p className="text-xs text-muted-foreground mt-0.5">{s.domain}</p>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
           </PaywallGate>
+          {!dispute.paid && Array.isArray(analysis.sources) && analysis.sources.length > 0 && (
+            <p className="mt-3 text-xs text-muted-foreground">
+              {t("analysis.sourcesCount", { count: analysis.sources.length })}
+            </p>
+          )}
 
           {/* Draft email */}
           <PaywallGate
