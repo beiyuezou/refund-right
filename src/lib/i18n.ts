@@ -1,5 +1,21 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
+import nl from "./locales/nl.json";
+import th from "./locales/th.json";
+import id from "./locales/id.json";
+import vi from "./locales/vi.json";
+import ms from "./locales/ms.json";
+
+export const LANGUAGES = [
+  { code: "en", label: "English" },
+  { code: "zh", label: "中文" },
+  { code: "nl", label: "Nederlands" },
+  { code: "th", label: "ไทย" },
+  { code: "id", label: "Bahasa Indonesia" },
+  { code: "vi", label: "Tiếng Việt" },
+  { code: "ms", label: "Bahasa Melayu" },
+] as const;
+const CODES: string[] = LANGUAGES.map((l) => l.code);
 
 const LANG_KEY = "rr_lang";
 
@@ -510,10 +526,18 @@ if (!i18n.isInitialized) {
   i18n
     .use(initReactI18next)
     .init({
-      resources: { en: { translation: en }, zh: { translation: zh } },
+      resources: {
+        en: { translation: en },
+        zh: { translation: zh },
+        nl: { translation: nl },
+        th: { translation: th },
+        id: { translation: id },
+        vi: { translation: vi },
+        ms: { translation: ms },
+      },
       lng: "en", // SSR-stable initial language; client syncs after mount
       fallbackLng: "en",
-      supportedLngs: ["en", "zh"],
+      supportedLngs: CODES,
       interpolation: { escapeValue: false },
       react: { useSuspense: false },
     });
@@ -525,11 +549,9 @@ if (!i18n.isInitialized) {
 if (typeof window !== "undefined") {
   const stored = window.localStorage.getItem(LANG_KEY);
   const initial =
-    stored === "en" || stored === "zh"
+    stored && CODES.includes(stored)
       ? stored
-      : (navigator.language || "en").toLowerCase().startsWith("zh")
-        ? "zh"
-        : "en";
+      : CODES.find((c) => (navigator.language || "en").toLowerCase().startsWith(c)) ?? "en";
   if (initial !== i18n.language) {
     // Defer past hydration: rAF runs after the first commit, setTimeout 0 as
     // a safety net for environments without rAF (older SSR shims).
