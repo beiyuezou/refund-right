@@ -89,6 +89,7 @@ function AnalysisPage() {
   const [loading, setLoading] = useState(true);
   const [retrying, setRetrying] = useState(false);
   const [retryLang, setRetryLang] = useState<"en" | "zh" | null>(null);
+  const [showLangSwitch, setShowLangSwitch] = useState(false);
   const [showFullEmail, setShowFullEmail] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
@@ -268,6 +269,19 @@ function AnalysisPage() {
           {analysis && (
             <div className="flex flex-wrap gap-2">
               <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowLangSwitch((v) => !v)}
+                className="gap-1.5"
+                aria-expanded={showLangSwitch}
+                title={i18n.language?.startsWith("zh") ? "切换报告语言" : "Change report language"}
+              >
+                <Languages className="h-3.5 w-3.5" />
+                {i18n.language?.startsWith("zh") ? "报告语言" : "Report language"}
+              </Button>
+              {showLangSwitch && (
+                <>
+              <Button
                 variant="outline"
                 size="sm"
                 onClick={() => requestRerun("en")}
@@ -297,6 +311,8 @@ function AnalysisPage() {
                 )}
                 中文
               </Button>
+                </>
+              )}
               <Button
                 variant="outline"
                 size="sm"
