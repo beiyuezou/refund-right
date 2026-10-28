@@ -57,8 +57,10 @@ export type Database = {
           dispute_id: string
           draft_email: string
           id: string
+          language: string
           leverage_points: Json
           model: string
+          parent_analysis_id: string | null
           recommendation: string
           risk_level: string
           sources: Json
@@ -70,8 +72,10 @@ export type Database = {
           dispute_id: string
           draft_email: string
           id?: string
+          language?: string
           leverage_points?: Json
           model: string
+          parent_analysis_id?: string | null
           recommendation: string
           risk_level: string
           sources?: Json
@@ -83,8 +87,10 @@ export type Database = {
           dispute_id?: string
           draft_email?: string
           id?: string
+          language?: string
           leverage_points?: Json
           model?: string
+          parent_analysis_id?: string | null
           recommendation?: string
           risk_level?: string
           sources?: Json
@@ -96,6 +102,13 @@ export type Database = {
             columns: ["dispute_id"]
             isOneToOne: false
             referencedRelation: "disputes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "dispute_analyses_parent_analysis_id_fkey"
+            columns: ["parent_analysis_id"]
+            isOneToOne: false
+            referencedRelation: "dispute_analyses"
             referencedColumns: ["id"]
           },
         ]
