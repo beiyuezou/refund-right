@@ -278,168 +278,26 @@ Deno.serve(async (req) => {
     }
     const parsed = call.parsed;
     parsed.confidence = clampConfidence(parsed.risk_level, parsed.confidence);
-    if (false) {
-    const aiRes = await fetch("https://api.tokenfactory.nebius.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${NEBIUS_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        max_tokens: 8000,
-        temperature: 0.4,
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "produce_analysis",
-              description:
-                "Return a structured rights analysis for the traveler's dispute.",
-              parameters: {
-                type: "object",
-                properties: {
-                  risk_level: {
-                    type: "string",
-                    enum: ["strong", "moderate", "weak"],
-                    description:
-                      "Strength of the consumer's case. 'strong' = likely to win, 'moderate' = winnable with effort, 'weak' = uphill.",
-                  },
-                  confidence: {
-                    type: "integer",
-                    minimum: 0,
-                    maximum: 100,
-                    description: "Your confidence in this assessment, 0-100.",
-                  },
-                  recommendation: {
-                    type: "string",
-                    description:
-                      "300-500 word professional legal-style analysis: applicable consumer rights for this jurisdiction, how the supplier's conduct measures up, and the suggested escalation path (platform → regulator → tribunal).",
-                  },
-                  leverage_points: {
-                    type: "array",
-                    minItems: 3,
-                    maxItems: 7,
-                    description:
-                      "Strongest arguments and tactics the user can deploy. MUST explicitly name any deceptive platform behavior detected (e.g. pressure to cancel insurance, refusal to refund a clearly airline-caused delay).",
-                    items: {
-                      type: "object",
-                      properties: {
-                        title: { type: "string" },
-                        detail: { type: "string" },
-                      },
-                      required: ["title", "detail"],
-                      additionalProperties: false,
-                    },
-                  },
-                  draft_email: {
-                    type: "string",
-                    description:
-                      "A complete formal complaint email the user can send. Begin with 'Subject: ...' on the first line. Use placeholders like [RECIPIENT NAME], [BOOKING REF], [DATE] where the user must fill in. Reference applicable statutes and set a 14-day deadline.",
-                  },
-                },
-                required: [
-                  "risk_level",
-                  "confidence",
-                  "recommendation",
-                  "leverage_points",
-                  "draft_email",
-                ],
-                additionalProperties: false,
-              },
-            },
-          },
-        ],
-        tool_choice: {
-          type: "function",
-          function: { name: "produce_analysis" },
-        },
-      }),
-    });
-
-    if (!aiRes.ok) {
-      await supabase.from("disputes").update({ status: "failed" }).eq("id", dispute.id);
-      if (aiRes.status === 429) {
-        return json(
-          { error: "Rate limit exceeded. Please wait a moment and try again." },
-          429,
-        );
-      }
-      if (aiRes.status === 402) {
-        console.error("[analyze-dispute] AI gateway 402 — credits exhausted");
-        return json(
-          {
-            error:
-              "Analysis service is temporarily unavailable. Please try again later.",
-            code: "service_unavailable",
-          },
-          503,
-        );
-      }
-      const errText = await aiRes.text();
-      console.error("AI gateway error:", aiRes.status, errText);
-      return json({ error: "AI analysis failed. Please try again." }, 500);
-    }
-
-    const aiJson = await aiRes.json();
-    const msg = aiJson?.choices?.[0]?.message;
-    let rawArgs: string | undefined = msg?.tool_calls?.[0]?.function?.arguments;
-    if (!rawArgs && typeof msg?.content === "string") {
-      // Fallback: model answered with JSON in content (strip <think> / fences).
-      const cleaned = msg.content.replace(/<think>[\s\S]*?<\/think>/g, "");
-      const m = cleaned.match(/\{[\s\S]*\}/);
-      if (m) rawArgs = m[0];
-    }
-    if (!rawArgs) {
-      await supabase.from("disputes").update({ status: "failed" }).eq("id", dispute.id);
-      console.error("No tool call in AI response", JSON.stringify(aiJson).slice(0, 2000));
-      return json({ error: "Invalid AI response." }, 500);
-    }
-
-    let parsed: {
-      risk_level: "strong" | "moderate" | "weak";
-      confidence: number;
-      recommendation: string;
-      leverage_points: { title: string; detail: string }[];
-      draft_email: string;
-    };
-    try {
-      parsed = JSON.parse(rawArgs);
-      if (
-        !["strong", "moderate", "weak"].includes(parsed.risk_level) ||
-        typeof parsed.recommendation !== "string" ||
-        !Array.isArray(parsed.leverage_points) ||
-        typeof parsed.draft_email !== "string"
-      ) throw new Error("schema mismatch");
-      parsed.confidence = Number(parsed.confidence) || 0;
-    } catch (e) {
-      console.error("Failed to parse tool call args", e);
-      await supabase.from("disputes").update({ status: "failed" }).eq("id", dispute.id);
-      return json({ error: "Invalid AI response format." }, 500);
-    }
-
     const { data: analysis, error: insertErr } = await supabase
       .from("dispute_analyses")
       .insert({
         dispute_id: dispute.id,
         user_id: userId,
         risk_level: parsed.risk_level,
-        confidence: Math.max(0, Math.min(100, Math.round(parsed.confidence))),
+        confidence: parsed.confidence,
         recommendation: parsed.recommendation,
         leverage_points: parsed.leverage_points,
         draft_email: parsed.draft_email,
         sources: tavilySources.map(({ title, url, domain }) => ({ title, url, domain })),
         model,
+        language: "en",
       })
       .select()
       .single();
 
-    if (insertErr) {
+    if (insertErr || !analysis) {
       console.error("Insert analysis error:", insertErr);
+      await supabase.from("disputes").update({ status: "failed" }).eq("id", dispute.id);
       return json({ error: "Failed to save analysis." }, 500);
     }
 
@@ -459,7 +317,33 @@ Deno.serve(async (req) => {
       },
     });
 
-    return json({ analysis_id: analysis.id });
+    // Requested language differs from the master: translate it right away.
+    let resultId: string = analysis.id;
+    if (language !== "en") {
+      const t = await translateAnalysis(
+        { ...parsed, id: analysis.id, sources: analysis.sources, language: "en" },
+        language,
+        NEBIUS_API_KEY,
+        model,
+      );
+      if (t.ok) {
+        const { data: row } = await supabase
+          .from("dispute_analyses")
+          .insert({
+            dispute_id: dispute.id,
+            user_id: userId,
+            ...t.result,
+            sources: analysis.sources,
+            model,
+            language,
+            parent_analysis_id: analysis.id,
+          })
+          .select("id")
+          .single();
+        if (row) resultId = row.id;
+      }
+    }
+    return json({ analysis_id: resultId });
   } catch (e) {
     const id = crypto.randomUUID();
     console.error(`[analyze-dispute ${id}]`, e);
