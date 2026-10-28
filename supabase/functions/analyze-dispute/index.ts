@@ -326,10 +326,17 @@ Deno.serve(async (req) => {
     }
 
     const aiJson = await aiRes.json();
-    const toolCall = aiJson?.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall?.function?.arguments) {
+    const msg = aiJson?.choices?.[0]?.message;
+    let rawArgs: string | undefined = msg?.tool_calls?.[0]?.function?.arguments;
+    if (!rawArgs && typeof msg?.content === "string") {
+      // Fallback: model answered with JSON in content (strip <think> / fences).
+      const cleaned = msg.content.replace(/<think>[\s\S]*?<\/think>/g, "");
+      const m = cleaned.match(/\{[\s\S]*\}/);
+      if (m) rawArgs = m[0];
+    }
+    if (!rawArgs) {
       await supabase.from("disputes").update({ status: "failed" }).eq("id", dispute.id);
-      console.error("No tool call in AI response", JSON.stringify(aiJson));
+      console.error("No tool call in AI response", JSON.stringify(aiJson).slice(0, 2000));
       return json({ error: "Invalid AI response." }, 500);
     }
 
@@ -341,7 +348,14 @@ Deno.serve(async (req) => {
       draft_email: string;
     };
     try {
-      parsed = JSON.parse(toolCall.function.arguments);
+      parsed = JSON.parse(rawArgs);
+      if (
+        !["strong", "moderate", "weak"].includes(parsed.risk_level) ||
+        typeof parsed.recommendation !== "string" ||
+        !Array.isArray(parsed.leverage_points) ||
+        typeof parsed.draft_email !== "string"
+      ) throw new Error("schema mismatch");
+      parsed.confidence = Number(parsed.confidence) || 0;
     } catch (e) {
       console.error("Failed to parse tool call args", e);
       await supabase.from("disputes").update({ status: "failed" }).eq("id", dispute.id);
