@@ -17,7 +17,7 @@ import { type CategoryKey } from "@/lib/categories";
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
     meta: [
-      { title: "My disputes · RefundRight" },
+      { title: "My disputes · RefundRights" },
       { name: "description", content: "Your saved travel disputes and AI rights analyses." },
     ],
   }),

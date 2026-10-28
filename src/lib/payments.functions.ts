@@ -81,13 +81,13 @@ export const createPaypalOrder = createServerFn({ method: "POST" })
         purchase_units: [
           {
             reference_id: dispute.id,
-            description: `RefundRight full report (${dispute.category})`,
+            description: `RefundRights full report (${dispute.category})`,
             custom_id: dispute.id,
             amount: { currency_code: CURRENCY, value: amount },
           },
         ],
         application_context: {
-          brand_name: "RefundRight",
+          brand_name: "RefundRights",
           user_action: "PAY_NOW",
           shipping_preference: "NO_SHIPPING",
         },

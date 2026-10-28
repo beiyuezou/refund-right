@@ -32,14 +32,14 @@ export const Route = createRootRoute({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "RefundRight — Fight back against unfair travel charges" },
+      { title: "RefundRights — Fight back against unfair travel charges" },
       {
         name: "description",
         content:
           "AI-powered legal assistant for travel disputes in Southeast Asia: hotel deposits, flight delays, insurance traps. Free to start.",
       },
-      { name: "author", content: "RefundRight" },
-      { property: "og:title", content: "RefundRight — Fight back against unfair travel charges" },
+      { name: "author", content: "RefundRights" },
+      { property: "og:title", content: "RefundRights — Fight back against unfair travel charges" },
       {
         property: "og:description",
         content:
@@ -47,7 +47,7 @@ export const Route = createRootRoute({
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:title", content: "RefundRight — Fight back against unfair travel charges" },
+      { name: "twitter:title", content: "RefundRights — Fight back against unfair travel charges" },
       { name: "description", content: "Your AI-powered legal assistant for SE Asia travel disputes. We help you recover hotel deposits and flight refunds using localized legal expertise." },
       { property: "og:description", content: "Your AI-powered legal assistant for SE Asia travel disputes. We help you recover hotel deposits and flight refunds using localized legal expertise." },
       { name: "twitter:description", content: "Your AI-powered legal assistant for SE Asia travel disputes. We help you recover hotel deposits and flight refunds using localized legal expertise." },

@@ -17,13 +17,13 @@ import { ARTICLES } from "@/lib/knowledge";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "RefundRight — Don't let them keep your money" },
+      { title: "RefundRights — Don't let them keep your money" },
       {
         name: "description",
         content:
           "AI-powered legal assistant for travel disputes in Southeast Asia. Hotel deposits, flight delays, insurance denials — get a rights analysis and a draft complaint in minutes.",
       },
-      { property: "og:title", content: "RefundRight — Don't let them keep your money" },
+      { property: "og:title", content: "RefundRights — Don't let them keep your money" },
       {
         property: "og:description",
         content:

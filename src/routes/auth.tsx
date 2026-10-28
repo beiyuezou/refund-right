@@ -24,7 +24,7 @@ export const Route = createFileRoute("/auth")({
   validateSearch: searchSchema,
   head: () => ({
     meta: [
-      { title: "Sign in — RefundRight" },
+      { title: "Sign in — RefundRights" },
       { name: "description", content: "Sign in or create an account to save your disputes." },
     ],
   }),

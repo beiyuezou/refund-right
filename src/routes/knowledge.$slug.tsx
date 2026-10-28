@@ -13,10 +13,10 @@ export const Route = createFileRoute("/knowledge/$slug")({
   },
   head: ({ loaderData }) => {
     const a = loaderData?.article;
-    if (!a) return { meta: [{ title: "Article — RefundRight" }] };
+    if (!a) return { meta: [{ title: "Article — RefundRights" }] };
     return {
       meta: [
-        { title: `${a.title} · RefundRight` },
+        { title: `${a.title} · RefundRights` },
         { name: "description", content: a.summary },
         { property: "og:title", content: a.title },
         { property: "og:description", content: a.summary },

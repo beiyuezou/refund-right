@@ -49,7 +49,7 @@ export const Route = createFileRoute("/claim/$category")({
   head: ({ params }) => ({
     meta: [
       {
-        title: `${CATEGORIES[params.category as CategoryKey].label} — Start a claim · RefundRight`,
+        title: `${CATEGORIES[params.category as CategoryKey].label} — Start a claim · RefundRights`,
       },
       {
         name: "description",

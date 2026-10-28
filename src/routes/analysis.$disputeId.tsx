@@ -40,7 +40,7 @@ import { PaywallGate } from "@/components/PaywallGate";
 export const Route = createFileRoute("/analysis/$disputeId")({
   head: () => ({
     meta: [
-      { title: "Rights analysis · RefundRight" },
+      { title: "Rights analysis · RefundRights" },
       { name: "description", content: "AI rights analysis and draft complaint for your travel dispute." },
     ],
   }),
