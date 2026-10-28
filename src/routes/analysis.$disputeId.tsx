@@ -98,9 +98,11 @@ function AnalysisPage() {
   const [pendingRerun, setPendingRerun] = useState<"en" | "zh" | "default" | null>(null);
   const saveDraft = useServerFn(saveDraftEmail);
 
-  const load = useCallback(async () => {
+  const [viewLang, setViewLang] = useState<"en" | "zh" | null>(null);
+
+  const load = useCallback(async (lang?: "en" | "zh") => {
     if (!user) return;
-    const [{ data: d }, { data: a }] = await Promise.all([
+    const [{ data: d }, { data: rows }] = await Promise.all([
       supabase
         .from("disputes")
         .select(
@@ -111,17 +113,47 @@ function AnalysisPage() {
       supabase
         .from("dispute_analyses")
         .select(
-          "id, risk_level, confidence, recommendation, leverage_points, draft_email, sources, created_at",
+          "id, risk_level, confidence, recommendation, leverage_points, draft_email, sources, created_at, language, parent_analysis_id",
         )
         .eq("dispute_id", disputeId)
         .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
+        .limit(20),
     ]);
     if (d) setDispute(d as Dispute);
-    if (a) setAnalysis(a as unknown as Analysis);
+    if (rows && rows.length > 0) {
+      // Show the latest master analysis, or its translation in the chosen language.
+      const master = rows.find((r) => !r.parent_analysis_id) ?? rows[0];
+      const want = lang ?? viewLang ?? (i18n.language?.startsWith("zh") ? "zh" : "en");
+      const pick =
+        master.language === want
+          ? master
+          : rows.find((r) => r.parent_analysis_id === master.id && r.language === want) ?? master;
+      setAnalysis(pick as unknown as Analysis);
+      setViewLang((pick as { language: "en" | "zh" }).language);
+    }
     setLoading(false);
-  }, [disputeId, user]);
+  }, [disputeId, user, viewLang, i18n.language]);
+
+  /** Switch report language by translating the master — never re-analyzing. */
+  async function switchLanguage(lang: "en" | "zh") {
+    if (retrying || !dispute) return;
+    setRetrying(true);
+    setRetryLang(lang);
+    try {
+      const { error } = await supabase.functions.invoke("analyze-dispute", {
+        body: { dispute_id: dispute.id, language: lang, mode: "translate" },
+      });
+      if (error) toast.error(t("analysis.reanalyzeFailed"));
+      else {
+        setEditing(false);
+        setEdited(false);
+        await load(lang);
+      }
+    } finally {
+      setRetrying(false);
+      setRetryLang(null);
+    }
+  }
 
   useEffect(() => {
     if (!authLoading) load();
@@ -152,7 +184,7 @@ function AnalysisPage() {
         toast.success(t("analysis.reanalyzing"));
         setEdited(false);
         setEditing(false);
-        await load();
+        await load(lang);
       }
     } finally {
       setRetrying(false);
@@ -284,7 +316,7 @@ function AnalysisPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => requestRerun("en")}
+                onClick={() => switchLanguage("en")}
                 disabled={retrying || editing}
                 className="gap-1.5"
                 title={t("analysis.regenInEnglish")}
@@ -299,7 +331,7 @@ function AnalysisPage() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => requestRerun("zh")}
+                onClick={() => switchLanguage("zh")}
                 disabled={retrying || editing}
                 className="gap-1.5"
                 title={t("analysis.regenInChinese")}
