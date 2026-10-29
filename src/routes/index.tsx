@@ -57,35 +57,35 @@ function HomePage() {
           aria-hidden
           className="absolute -top-24 -right-24 -z-10 h-72 w-72 rounded-full bg-accent/10 blur-3xl"
         />
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 pt-14 sm:pt-20 pb-12 sm:pb-20">
-          <div className="grid gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 pt-8 sm:pt-20 pb-12 sm:pb-20">
+          <div className="grid gap-8 lg:gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
           <div>
             <span className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent-soft px-3 py-1 text-xs font-semibold text-accent uppercase tracking-wider">
               <Sparkles className="h-3.5 w-3.5" /> {t("home.badge")}
             </span>
-            <h1 className="mt-5 text-4xl sm:text-6xl font-extrabold tracking-tight text-primary leading-[1.05]">
+            <h1 className="mt-4 sm:mt-5 text-[2.1rem] sm:text-6xl font-extrabold tracking-tight text-primary leading-[1.08] sm:leading-[1.05]">
               {t("home.headline1")} <br className="hidden sm:block" />
               {t("home.headline2")} <span className="text-accent">{t("home.headlineMoney")}</span>.
             </h1>
-            <p className="mt-5 text-lg sm:text-xl text-muted-foreground max-w-2xl leading-relaxed">
+            <p className="mt-4 sm:mt-5 text-base sm:text-xl text-muted-foreground max-w-2xl leading-relaxed">
               {t("home.subtext")}
             </p>
-            <div className="mt-8 flex flex-wrap items-center gap-3">
+            <div className="mt-6 sm:mt-8 grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-center">
               <Link
                 to="/claim/$category"
                 params={{ category: "hotel" }}
-                className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-accent px-6 text-base font-semibold text-accent-foreground shadow-elevated transition-all hover:opacity-95"
+                className="inline-flex h-12 items-center justify-center gap-2 rounded-lg bg-accent px-4 sm:px-6 text-base font-semibold text-accent-foreground shadow-elevated transition-all hover:opacity-95"
               >
-                {t("home.startDispute")} <ArrowRight className="h-4 w-4" />
+                {t("home.startDispute")} <ArrowRight className="h-4 w-4 shrink-0" />
               </Link>
               <a
                 href="#how-it-works"
-                className="inline-flex h-12 items-center justify-center rounded-lg border border-input bg-background px-5 text-base font-medium text-primary transition-colors hover:bg-secondary"
+                className="inline-flex h-12 items-center justify-center rounded-lg border border-input bg-background px-4 sm:px-5 text-base font-medium text-primary transition-colors hover:bg-secondary"
               >
                 {t("home.howItWorks")}
               </a>
             </div>
-            <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
+            <div className="mt-6 sm:mt-8 flex flex-wrap gap-x-4 sm:gap-x-6 gap-y-2 text-xs sm:text-sm text-muted-foreground">
               <span className="inline-flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-accent" /> {t("home.aiPowered")}
               </span>
