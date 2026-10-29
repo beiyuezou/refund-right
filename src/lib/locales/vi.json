@@ -46,7 +46,20 @@
     "step3Body": "Email chính thức, sẵn sàng gửi tới nền tảng hoặc cơ quan quản lý. Kèm theo các điểm tựa pháp lý để bảo vệ quyền lợi của bạn.",
     "knowYourRights": "Nắm rõ quyền lợi",
     "countryGuides": "Cẩm nang riêng theo từng quốc gia cho du khách Đông Nam Á.",
-    "allArticles": "Tất cả bài viết"
+    "allArticles": "Tất cả bài viết",
+    "preview": {
+      "title": "Tiền cọc khách sạn",
+      "meta": "Bangkok, Thái Lan · ฿5.000",
+      "example": "Ví dụ",
+      "strong": "Vụ việc mạnh",
+      "verdict": "Giữ tiền cọc mà không có bằng chứng hư hại là vi phạm Luật Bảo vệ Người tiêu dùng Thái Lan B.E. 2522.",
+      "leverage": "Luận điểm chính",
+      "p1": "Không có biên bản hư hại khi trả phòng",
+      "p2": "Khoản giữ thẻ vượt điều khoản đặt phòng",
+      "p3": "Có thể khiếu nại OCPB trong 30 ngày",
+      "email": "Email khiếu nại",
+      "draftReady": "Bản nháp sẵn sàng"
+    }
   },
   "categories": {
     "hotel": {

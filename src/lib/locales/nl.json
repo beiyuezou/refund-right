@@ -46,7 +46,20 @@
     "step3Body": "Een formele e-mail, direct klaar voor verzending naar het platform of de toezichthouder. Inclusief juridische hefbomen om uw positie te versterken.",
     "knowYourRights": "Ken uw rechten",
     "countryGuides": "Landenspecifieke gidsen voor reizigers in Zuidoost-Azië.",
-    "allArticles": "Alle artikelen"
+    "allArticles": "Alle artikelen",
+    "preview": {
+      "title": "Hotelborg",
+      "meta": "Bangkok, Thailand · ฿5.000",
+      "example": "Voorbeeld",
+      "strong": "Sterke zaak",
+      "verdict": "Borg inhouden zonder bewijs van schade schendt de Thaise Consumer Protection Act B.E. 2522.",
+      "leverage": "Sterke punten",
+      "p1": "Bij het uitchecken is geen schaderapport opgesteld",
+      "p2": "Pre-autorisatie overschreed de boekingsvoorwaarden",
+      "p3": "Klacht bij OCPB mogelijk binnen 30 dagen",
+      "email": "Klachtmail",
+      "draftReady": "Concept klaar"
+    }
   },
   "categories": {
     "hotel": {
