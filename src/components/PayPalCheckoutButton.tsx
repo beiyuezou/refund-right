@@ -49,7 +49,7 @@ export function PayPalCheckoutButton({ disputeId, onPaid }: Props) {
   if (configError) {
     return (
       <p className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-xs text-destructive">
-        PayPal is not configured yet. Please add PAYPAL_CLIENT_ID in project settings.
+        Checkout is temporarily unavailable. Please try again later.
       </p>
     );
   }
