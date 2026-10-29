@@ -226,7 +226,16 @@
     "catFlight": "Vlucht",
     "catInsurance": "Verzekering",
     "catTransport": "Vervoer",
-    "catGeneral": "Algemeen"
+    "catGeneral": "Algemeen",
+    "cases": "Voorbeeldzaken",
+    "caseHappened": "Wat er gebeurde",
+    "caseAction": "Wat ze deden",
+    "caseOutcome": "Resultaat",
+    "outcome_full": "Volledige terugbetaling",
+    "outcome_partial": "Gedeeltelijke terugbetaling",
+    "outcome_rejected": "Afgewezen",
+    "casesDisclaimer": "Illustratieve voorbeelden, geen juridisch advies.",
+    "startSimilar": "Start een vergelijkbare claim"
   },
   "countries": {
     "Thailand": "Thailand",
