@@ -199,7 +199,8 @@ Deno.serve(async (req) => {
       if (existing) return json({ analysis_id: existing.id });
       const t = await translateAnalysis(master as unknown as MasterRow, language, NEBIUS_API_KEY, model);
       if (!t.ok) return json({ error: t.error }, t.status);
-      const { data: row, error: insErr } = await supabase
+      // Ownership verified above; report columns are not browser-selectable, so write as admin.
+      const { data: row, error: insErr } = await admin
         .from("dispute_analyses")
         .insert({
           dispute_id: dispute.id,
@@ -287,7 +288,7 @@ Deno.serve(async (req) => {
     }
     const parsed = call.parsed;
     parsed.confidence = clampConfidence(parsed.risk_level, parsed.confidence);
-    const { data: analysis, error: insertErr } = await supabase
+    const { data: analysis, error: insertErr } = await admin
       .from("dispute_analyses")
       .insert({
         dispute_id: dispute.id,
@@ -342,7 +343,7 @@ Deno.serve(async (req) => {
         model,
       );
       if (t.ok) {
-        const { data: row } = await supabase
+        const { data: row } = await admin
           .from("dispute_analyses")
           .insert({
             dispute_id: dispute.id,
