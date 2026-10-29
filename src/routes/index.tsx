@@ -8,12 +8,17 @@ import {
   Sparkles,
   ScrollText,
   FileText,
+  Check,
+  Lock,
+  Cpu,
+  Search,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { SiteHeader, SiteFooter } from "@/components/SiteChrome";
 import { type CategoryKey } from "@/lib/categories";
 import { ARTICLES } from "@/lib/knowledge";
 import { HeroPreviewCard } from "@/components/HeroPreviewCard";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -30,6 +35,8 @@ export const Route = createFileRoute("/")({
         content:
           "Free, AI-powered rights analysis for travelers fighting hotels, airlines, and booking platforms across Southeast Asia.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: HomePage,
@@ -212,6 +219,54 @@ function HomePage() {
             {t("home.allArticles")} <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
+      </section>
+
+      {/* Value comparison */}
+      <section className="bg-secondary/40 border-y border-border/60">
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 py-14">
+          <h2 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight">{t("value.title")}</h2>
+          <div className="mt-8 grid gap-5 md:grid-cols-2">
+            <div className="rounded-2xl border border-border bg-card p-6 shadow-card">
+              <h3 className="font-semibold text-primary">{t("value.free")}</h3>
+              <ul className="mt-4 space-y-2.5 text-sm">
+                {(["f1", "f2"] as const).map((k) => (
+                  <li key={k} className="flex gap-2"><Check className="h-4 w-4 shrink-0 text-accent" />{t(`value.${k}`)}</li>
+                ))}
+                {(["f3", "f4", "f5", "f6"] as const).map((k) => (
+                  <li key={k} className="flex gap-2 text-muted-foreground"><Lock className="h-4 w-4 shrink-0" />{t(`value.${k}`)}</li>
+                ))}
+              </ul>
+            </div>
+            <div className="rounded-2xl border-2 border-accent bg-card p-6 shadow-elevated">
+              <div className="flex items-center justify-between gap-2">
+                <h3 className="font-semibold text-primary">{t("value.full")}</h3>
+                <span className="rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-semibold text-accent-foreground">{t("value.price")}</span>
+              </div>
+              <ul className="mt-4 space-y-2.5 text-sm">
+                {(["f1", "f2", "f3", "f4", "f5", "f6"] as const).map((k) => (
+                  <li key={k} className="flex gap-2"><Check className="h-4 w-4 shrink-0 text-accent" />{t(`value.${k}`)}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          <div className="mt-6 flex flex-wrap gap-3 text-xs sm:text-sm text-muted-foreground">
+            <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5"><Cpu className="h-4 w-4 text-accent" />{t("faq.poweredBy")}</span>
+            <span className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5"><Search className="h-4 w-4 text-accent" />{t("faq.grounded")}</span>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="mx-auto w-full max-w-3xl px-4 sm:px-6 py-14">
+        <h2 className="text-2xl sm:text-3xl font-bold text-primary tracking-tight">{t("faq.title")}</h2>
+        <Accordion type="single" collapsible className="mt-6">
+          {[1, 2, 3, 4, 5].map((n) => (
+            <AccordionItem key={n} value={`q${n}`}>
+              <AccordionTrigger className="text-left font-semibold text-primary">{t(`faq.q${n}`)}</AccordionTrigger>
+              <AccordionContent className="text-muted-foreground leading-relaxed">{t(`faq.a${n}`)}</AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
       </section>
 
       <SiteFooter />
