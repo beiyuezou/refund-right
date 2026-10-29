@@ -1,19 +1,12 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import nl from "./locales/nl.json";
-import th from "./locales/th.json";
-import id from "./locales/id.json";
-import vi from "./locales/vi.json";
-import ms from "./locales/ms.json";
+import { extra } from "./locales/extra";
 
 export const LANGUAGES = [
   { code: "en", label: "English" },
   { code: "zh", label: "中文" },
   { code: "nl", label: "Nederlands" },
-  { code: "th", label: "ไทย" },
-  { code: "id", label: "Bahasa Indonesia" },
-  { code: "vi", label: "Tiếng Việt" },
-  { code: "ms", label: "Bahasa Melayu" },
 ] as const;
 const CODES: string[] = LANGUAGES.map((l) => l.code);
 
@@ -552,10 +545,6 @@ if (!i18n.isInitialized) {
         en: { translation: en },
         zh: { translation: zh },
         nl: { translation: nl },
-        th: { translation: th },
-        id: { translation: id },
-        vi: { translation: vi },
-        ms: { translation: ms },
       },
       lng: "en", // SSR-stable initial language; client syncs after mount
       fallbackLng: "en",
@@ -564,6 +553,8 @@ if (!i18n.isInitialized) {
       react: { useSuspense: false },
     });
 }
+
+(["en", "zh", "nl"] as const).forEach((l) => i18n.addResourceBundle(l, "translation", extra[l], true, false));
 
 // Client-only: sync to user preference AFTER hydration to avoid SSR mismatch.
 // We wait one paint frame so React's initial render matches the server ("en"),

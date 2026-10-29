@@ -13,6 +13,7 @@ import { SiteHeader, SiteFooter } from "@/components/SiteChrome";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import { type CategoryKey } from "@/lib/categories";
+import { CLOSED_STATUSES, isCaseStatus, nextStep, totalRecovered } from "@/lib/case-status";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -31,6 +32,10 @@ type DisputeRow = {
   city: string | null;
   status: string;
   created_at: string;
+  case_status: string;
+  case_status_at: string;
+  recovered_amount: number | null;
+  currency: string | null;
   dispute_analyses: { risk_level: string; confidence: number }[] | null;
 };
 
@@ -62,7 +67,7 @@ function DashboardPage() {
       const { data, error } = await supabase
         .from("disputes")
         .select(
-          "id, category, country, city, status, created_at, dispute_analyses(risk_level, confidence)",
+          "id, category, country, city, status, created_at, case_status, case_status_at, recovered_amount, currency, dispute_analyses(risk_level, confidence)",
         )
         .order("created_at", { ascending: false });
       if (error) {
@@ -92,6 +97,24 @@ function DashboardPage() {
               <Plus className="h-4 w-4" /> {t("dashboard.newDispute")}
             </Link>
           </div>
+
+          {rows && rows.length > 0 && (
+            <div className="mb-6 grid grid-cols-2 gap-3">
+              <div className="rounded-xl border border-border bg-card p-4 shadow-card">
+                <p className="text-xs text-muted-foreground">{t("tracker.openCases")}</p>
+                <p className="mt-1 text-2xl font-bold text-primary">
+                  {rows.filter((r) => !CLOSED_STATUSES.includes(r.case_status as never)).length}
+                </p>
+              </div>
+              <div className="rounded-xl border border-border bg-card p-4 shadow-card">
+                <p className="text-xs text-muted-foreground">{t("tracker.totalRecovered")}</p>
+                <p className="mt-1 text-2xl font-bold text-accent">
+                  {totalRecovered(rows).toLocaleString()}
+                  {(() => { const c = [...new Set(rows.filter((r) => r.case_status === "refunded" && r.currency).map((r) => r.currency))]; return c.length === 1 ? ` ${c[0]}` : ""; })()}
+                </p>
+              </div>
+            </div>
+          )}
 
           {rows === null ? (
             <div className="flex h-48 items-center justify-center">
@@ -155,6 +178,16 @@ function DashboardPage() {
                             {r.city ? ` · ${r.city}` : ""} ·{" "}
                             {new Date(r.created_at).toLocaleDateString()}
                           </p>
+                          {isCaseStatus(r.case_status) && (
+                            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                              <span className="inline-flex items-center rounded-full bg-primary-soft px-2 py-0.5 font-semibold text-primary">
+                                {t(`tracker.status_${r.case_status}`)}
+                              </span>
+                              <span className="text-muted-foreground">
+                                {t(`tracker.next_${nextStep(r.case_status, new Date(r.case_status_at))}`)}
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </Link>

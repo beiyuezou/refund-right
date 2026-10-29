@@ -18,6 +18,7 @@ import { Route as ApiTranscribeAudioRouteImport } from './routes/api/transcribe-
 import { Route as ApiTtsRouteImport } from './routes/api/tts'
 import { Route as ClaimCategoryRouteImport } from './routes/claim.$category'
 import { Route as KnowledgeSlugRouteImport } from './routes/knowledge_.$slug'
+import { Route as AnalysisDisputeIdPrintRouteImport } from './routes/analysis_.$disputeId.print'
 import { Route as ApiPublicPaypalWebhookRouteImport } from './routes/api/public/paypal-webhook'
 import { Route as ApiPublicScrapeBrowserRouteImport } from './routes/api/public/scrape-browser'
 
@@ -66,6 +67,11 @@ const KnowledgeSlugRoute = KnowledgeSlugRouteImport.update({
   path: '/knowledge/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AnalysisDisputeIdPrintRoute = AnalysisDisputeIdPrintRouteImport.update({
+  id: '/analysis_/$disputeId/print',
+  path: '/analysis/$disputeId/print',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicPaypalWebhookRoute = ApiPublicPaypalWebhookRouteImport.update({
   id: '/api/public/paypal-webhook',
   path: '/api/public/paypal-webhook',
@@ -87,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/api/tts': typeof ApiTtsRoute
   '/claim/$category': typeof ClaimCategoryRoute
   '/knowledge/$slug': typeof KnowledgeSlugRoute
+  '/analysis/$disputeId/print': typeof AnalysisDisputeIdPrintRoute
   '/api/public/paypal-webhook': typeof ApiPublicPaypalWebhookRoute
   '/api/public/scrape-browser': typeof ApiPublicScrapeBrowserRoute
 }
@@ -100,6 +107,7 @@ export interface FileRoutesByTo {
   '/api/tts': typeof ApiTtsRoute
   '/claim/$category': typeof ClaimCategoryRoute
   '/knowledge/$slug': typeof KnowledgeSlugRoute
+  '/analysis/$disputeId/print': typeof AnalysisDisputeIdPrintRoute
   '/api/public/paypal-webhook': typeof ApiPublicPaypalWebhookRoute
   '/api/public/scrape-browser': typeof ApiPublicScrapeBrowserRoute
 }
@@ -114,6 +122,7 @@ export interface FileRoutesById {
   '/api/tts': typeof ApiTtsRoute
   '/claim/$category': typeof ClaimCategoryRoute
   '/knowledge_/$slug': typeof KnowledgeSlugRoute
+  '/analysis_/$disputeId/print': typeof AnalysisDisputeIdPrintRoute
   '/api/public/paypal-webhook': typeof ApiPublicPaypalWebhookRoute
   '/api/public/scrape-browser': typeof ApiPublicScrapeBrowserRoute
 }
@@ -129,6 +138,7 @@ export interface FileRouteTypes {
     | '/api/tts'
     | '/claim/$category'
     | '/knowledge/$slug'
+    | '/analysis/$disputeId/print'
     | '/api/public/paypal-webhook'
     | '/api/public/scrape-browser'
   fileRoutesByTo: FileRoutesByTo
@@ -142,6 +152,7 @@ export interface FileRouteTypes {
     | '/api/tts'
     | '/claim/$category'
     | '/knowledge/$slug'
+    | '/analysis/$disputeId/print'
     | '/api/public/paypal-webhook'
     | '/api/public/scrape-browser'
   id:
@@ -155,6 +166,7 @@ export interface FileRouteTypes {
     | '/api/tts'
     | '/claim/$category'
     | '/knowledge_/$slug'
+    | '/analysis_/$disputeId/print'
     | '/api/public/paypal-webhook'
     | '/api/public/scrape-browser'
   fileRoutesById: FileRoutesById
@@ -169,6 +181,7 @@ export interface RootRouteChildren {
   ApiTtsRoute: typeof ApiTtsRoute
   ClaimCategoryRoute: typeof ClaimCategoryRoute
   KnowledgeSlugRoute: typeof KnowledgeSlugRoute
+  AnalysisDisputeIdPrintRoute: typeof AnalysisDisputeIdPrintRoute
   ApiPublicPaypalWebhookRoute: typeof ApiPublicPaypalWebhookRoute
   ApiPublicScrapeBrowserRoute: typeof ApiPublicScrapeBrowserRoute
 }
@@ -238,6 +251,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof KnowledgeSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/analysis_/$disputeId/print': {
+      id: '/analysis_/$disputeId/print'
+      path: '/analysis/$disputeId/print'
+      fullPath: '/analysis/$disputeId/print'
+      preLoaderRoute: typeof AnalysisDisputeIdPrintRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/paypal-webhook': {
       id: '/api/public/paypal-webhook'
       path: '/api/public/paypal-webhook'
@@ -265,6 +285,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiTtsRoute: ApiTtsRoute,
   ClaimCategoryRoute: ClaimCategoryRoute,
   KnowledgeSlugRoute: KnowledgeSlugRoute,
+  AnalysisDisputeIdPrintRoute: AnalysisDisputeIdPrintRoute,
   ApiPublicPaypalWebhookRoute: ApiPublicPaypalWebhookRoute,
   ApiPublicScrapeBrowserRoute: ApiPublicScrapeBrowserRoute,
 }

@@ -29,6 +29,13 @@
       "when": 1793267767913,
       "tag": "0003_special_code",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793273968732,
+      "tag": "0004_case_tracking",
+      "breakpoints": true
     }
   ]
 }

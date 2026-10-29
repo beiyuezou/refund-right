@@ -113,6 +113,41 @@ export type Database = {
           },
         ]
       }
+      dispute_events: {
+        Row: {
+          created_at: string
+          dispute_id: string
+          id: string
+          note: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dispute_id: string
+          id?: string
+          note?: string | null
+          status: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dispute_id?: string
+          id?: string
+          note?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dispute_events_dispute_id_fkey"
+            columns: ["dispute_id"]
+            isOneToOne: false
+            referencedRelation: "disputes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       dispute_evidence: {
         Row: {
           created_at: string
@@ -157,6 +192,8 @@ export type Database = {
       disputes: {
         Row: {
           amount: number | null
+          case_status: string
+          case_status_at: string
           category: string
           city: string | null
           country: string
@@ -166,6 +203,7 @@ export type Database = {
           incident_date: string | null
           paid: boolean
           paid_at: string | null
+          recovered_amount: number | null
           status: string
           story: string
           updated_at: string
@@ -173,6 +211,8 @@ export type Database = {
         }
         Insert: {
           amount?: number | null
+          case_status?: string
+          case_status_at?: string
           category: string
           city?: string | null
           country: string
@@ -182,6 +222,7 @@ export type Database = {
           incident_date?: string | null
           paid?: boolean
           paid_at?: string | null
+          recovered_amount?: number | null
           status?: string
           story: string
           updated_at?: string
@@ -189,6 +230,8 @@ export type Database = {
         }
         Update: {
           amount?: number | null
+          case_status?: string
+          case_status_at?: string
           category?: string
           city?: string | null
           country?: string
@@ -198,6 +241,7 @@ export type Database = {
           incident_date?: string | null
           paid?: boolean
           paid_at?: string | null
+          recovered_amount?: number | null
           status?: string
           story?: string
           updated_at?: string
