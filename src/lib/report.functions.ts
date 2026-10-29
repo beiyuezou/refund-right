@@ -24,7 +24,7 @@ export const getAnalysisReport = createServerFn({ method: "POST" })
     const { data: rows } = await supabaseAdmin
       .from("dispute_analyses")
       .select(
-        "id, risk_level, confidence, recommendation, leverage_points, draft_email, sources, created_at, language, parent_analysis_id",
+        "id, risk_level, confidence, recommendation, leverage_points, draft_email, sources, created_at, language, parent_analysis_id, model",
       )
       .eq("dispute_id", dispute.id)
       .eq("user_id", userId)

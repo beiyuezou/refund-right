@@ -17,6 +17,7 @@ export type ReportRow = {
   created_at: string;
   language: string;
   parent_analysis_id: string | null;
+  model?: string;
 };
 
 const LOCKED = "••••••••••••••••••••••••••••••••••••••••";

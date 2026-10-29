@@ -172,6 +172,7 @@ Deno.serve(async (req) => {
     }
 
     // Hackathon requirement: NVIDIA open model served on Nebius Token Factory.
+    // Tiering: Super for the main legal analysis, Nano for fast translation calls.
     const model = "nvidia/nemotron-3-super-120b-a12b";
 
     // ---------- Translate mode: reuse the master analysis ----------
@@ -205,7 +206,7 @@ Deno.serve(async (req) => {
           user_id: userId,
           ...t.result,
           sources: master.sources,
-          model,
+          model: t.model,
           language,
           parent_analysis_id: master.id,
         })
@@ -341,7 +342,7 @@ Deno.serve(async (req) => {
             user_id: userId,
             ...t.result,
             sources: analysis.sources,
-            model,
+            model: t.model,
             language,
             parent_analysis_id: analysis.id,
           })
@@ -559,7 +560,7 @@ async function translateAnalysis(
   apiKey: string,
   model: string,
 ): Promise<
-  | { ok: true; result: Parsed; mismatches: string[] }
+  | { ok: true; result: Parsed; mismatches: string[]; model: string }
   | { ok: false; status: number; error: string }
 > {
   const target = language === "zh" ? "Simplified Chinese (简体中文)" : "English";
@@ -586,18 +587,31 @@ Respond by calling produce_analysis.`;
       draft_email: master.draft_email,
     });
   let last: { result: Parsed; mismatches: string[] } | null = null;
+  let used = model;
   for (let attempt = 0; attempt < 2; attempt++) {
     const prompt =
       attempt === 0 || !last
         ? user
         : `${user}\n\nYour previous translation changed the structure (${last.mismatches.join(", ")}). Translate again, faithfully, keeping every argument and citation.`;
-    const call = await callModel(system, prompt, apiKey, model);
+    // First attempt on fast Nemotron Nano; fall back to Super on error or drift.
+    used = attempt === 0 ? FAST_TRANSLATION_MODEL : model;
+    let call = await callModel(system, prompt, apiKey, used);
+    if (!call.ok && attempt === 0) {
+      used = model;
+      call = await callModel(system, prompt, apiKey, used);
+    }
     if (!call.ok) return call;
     last = enforceTranslation(master, call.parsed);
+    // Smaller models sometimes echo English; require real Chinese text.
+    if (language === "zh" && (call.parsed.recommendation.match(/[\u4e00-\u9fff]/g)?.length ?? 0) < 10) {
+      last.mismatches.push("not_translated");
+    }
     if (last.mismatches.length === 0) break;
   }
   if (!last || last.mismatches.includes("leverage_count")) {
     return { ok: false, status: 500, error: "Translation failed. Please try again." };
   }
-  return { ok: true, ...last };
+  return { ok: true, ...last, model: used };
 }
+
+const FAST_TRANSLATION_MODEL = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B";

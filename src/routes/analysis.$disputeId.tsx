@@ -86,6 +86,7 @@ type Analysis = {
   draft_email: string;
   sources?: { title: string; url: string; domain: string }[] | null;
   created_at: string;
+  model?: string;
 };
 
 function AnalysisPage() {
@@ -312,7 +313,9 @@ function AnalysisPage() {
                 {dispute.amount ? ` · ${dispute.amount} ${dispute.currency ?? ""}` : ""}
               </p>
               <p className="mt-1 inline-flex items-center rounded-full border border-border px-2 py-0.5 text-[11px] text-muted-foreground">
-                Powered by NVIDIA Nemotron · Nebius Token Factory
+                {analysis?.model && !analysis.model.toLowerCase().includes("nemotron")
+                  ? `Legacy model: ${analysis.model} · re-run for NVIDIA Nemotron`
+                  : `Powered by ${analysis?.model ?? "NVIDIA Nemotron"} · Nebius Token Factory`}
               </p>
             </div>
           </div>
