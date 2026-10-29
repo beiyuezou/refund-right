@@ -1,116 +1,72 @@
 import { createFileRoute } from "@tanstack/react-router";
-
-function paypalBase(): string {
-  const env = (process.env.PAYPAL_ENV ?? "sandbox").toLowerCase();
-  return env === "live"
-    ? "https://api-m.paypal.com"
-    : "https://api-m.sandbox.paypal.com";
-}
-
-async function paypalAccessToken(): Promise<string | null> {
-  const clientId = process.env.PAYPAL_CLIENT_ID;
-  const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
-  if (!clientId || !clientSecret) return null;
-  const auth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
-  const res = await fetch(`${paypalBase()}/v1/oauth2/token`, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${auth}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: "grant_type=client_credentials",
-  });
-  if (!res.ok) return null;
-  const json = (await res.json()) as { access_token: string };
-  return json.access_token;
-}
+import { paypalAccessToken, paypalBase } from "@/lib/paypal.server";
+import { isValidCaptureResource } from "@/lib/paywall";
 
 export const Route = createFileRoute("/api/public/paypal-webhook")({
   server: {
     handlers: {
       POST: async ({ request }) => {
         const webhookId = process.env.PAYPAL_WEBHOOK_ID;
-        if (!webhookId) {
-          return new Response("Webhook not configured", { status: 500 });
-        }
+        if (!webhookId) return new Response("Not configured", { status: 503 });
 
         const rawBody = await request.text();
-        const headers = request.headers;
-
-        const token = await paypalAccessToken();
-        if (!token) {
-          return new Response("Auth failure", { status: 500 });
+        let event: {
+          event_type?: string;
+          resource?: {
+            status?: string;
+            amount?: { value?: string; currency_code?: string };
+            supplementary_data?: { related_ids?: { order_id?: string } };
+          };
+        };
+        try {
+          event = JSON.parse(rawBody);
+        } catch {
+          return new Response("Bad request", { status: 400 });
         }
 
-        // Verify signature via PayPal
-        const verifyRes = await fetch(
-          `${paypalBase()}/v1/notifications/verify-webhook-signature`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              auth_algo: headers.get("paypal-auth-algo"),
-              cert_url: headers.get("paypal-cert-url"),
-              transmission_id: headers.get("paypal-transmission-id"),
-              transmission_sig: headers.get("paypal-transmission-sig"),
-              transmission_time: headers.get("paypal-transmission-time"),
-              webhook_id: webhookId,
-              webhook_event: JSON.parse(rawBody),
-            }),
-          },
-        );
-        const verifyJson = (await verifyRes.json().catch(() => ({}))) as {
-          verification_status?: string;
-        };
-        if (verifyJson.verification_status !== "SUCCESS") {
+        const token = await paypalAccessToken();
+        if (!token) return new Response("Unavailable", { status: 503 });
+        const h = request.headers;
+        const verifyRes = await fetch(`${paypalBase()}/v1/notifications/verify-webhook-signature`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            auth_algo: h.get("paypal-auth-algo"),
+            cert_url: h.get("paypal-cert-url"),
+            transmission_id: h.get("paypal-transmission-id"),
+            transmission_sig: h.get("paypal-transmission-sig"),
+            transmission_time: h.get("paypal-transmission-time"),
+            webhook_id: webhookId,
+            webhook_event: event,
+          }),
+        });
+        const verify = (await verifyRes.json().catch(() => ({}))) as { verification_status?: string };
+        if (verify.verification_status !== "SUCCESS") {
           return new Response("Invalid signature", { status: 401 });
         }
 
-        const event = JSON.parse(rawBody) as {
-          event_type?: string;
-          resource?: {
-            id?: string;
-            custom_id?: string;
-            supplementary_data?: {
-              related_ids?: { order_id?: string };
-            };
-            purchase_units?: Array<{ custom_id?: string; reference_id?: string }>;
-          };
-        };
+        if (event.event_type !== "PAYMENT.CAPTURE.COMPLETED") return new Response("ok");
+        const orderId = event.resource?.supplementary_data?.related_ids?.order_id;
+        if (!orderId || !isValidCaptureResource(event.resource)) return new Response("ok");
 
-        if (event.event_type === "PAYMENT.CAPTURE.COMPLETED") {
-          const orderId =
-            event.resource?.supplementary_data?.related_ids?.order_id ??
-            event.resource?.id;
-          const disputeId =
-            event.resource?.custom_id ??
-            event.resource?.purchase_units?.[0]?.custom_id ??
-            event.resource?.purchase_units?.[0]?.reference_id;
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        // Trust only our own order record for which case was paid.
+        const { data: pay } = await supabaseAdmin
+          .from("payments")
+          .select("id, dispute_id, status")
+          .eq("paypal_order_id", orderId)
+          .maybeSingle();
+        if (!pay || pay.status === "completed") return new Response("ok");
 
-          if (orderId) {
-            const { supabaseAdmin } = await import(
-              "@/integrations/supabase/client.server"
-            );
-            await supabaseAdmin
-              .from("payments")
-              .update({
-                status: "completed",
-                raw_payload: event,
-              })
-              .eq("paypal_order_id", orderId);
-
-            if (disputeId) {
-              await supabaseAdmin
-                .from("disputes")
-                .update({ paid: true, paid_at: new Date().toISOString() })
-                .eq("id", disputeId);
-            }
-          }
-        }
-
+        await supabaseAdmin
+          .from("payments")
+          .update({ status: "completed", raw_payload: event })
+          .eq("id", pay.id);
+        await supabaseAdmin
+          .from("disputes")
+          .update({ paid: true, paid_at: new Date().toISOString() })
+          .eq("id", pay.dispute_id)
+          .eq("paid", false);
         return new Response("ok");
       },
     },
