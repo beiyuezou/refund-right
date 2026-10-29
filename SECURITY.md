@@ -9,7 +9,7 @@ If you fork this project, provide your own values for the secrets listed in the 
 - Every user table has row-level security: users can only read their own cases, reports, evidence and timelines.
 - Full report content is served only through a server function after the paywall check.
 - Evidence files are stored in a private bucket under the owner's folder; uploads are type- and size-checked.
-- Outbound searches (Tavily, Bright Data) contain only country, category and platform name — never the user's story.
+- Outbound searches (Tavily search and extract) contain only country, category and platform name — never the user's story.
 - Full PayPal payloads (which contain payer PII) are not stored.
 - Audit and rate-limit logs are deleted after 90 days.
 - Users can delete all of their data from the Privacy page.

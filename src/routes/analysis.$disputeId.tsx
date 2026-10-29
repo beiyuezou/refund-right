@@ -84,7 +84,7 @@ type Analysis = {
   recommendation: string;
   leverage_points: LeveragePoint[];
   draft_email: string;
-  sources?: { title: string; url: string; domain: string; provider?: "tavily" | "bright_data" | "official" }[] | null;
+  sources?: { title: string; url: string; domain: string; provider?: "tavily" | "tavily_extract" | "bright_data" | "official" }[] | null;
   created_at: string;
   model?: string;
 };

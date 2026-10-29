@@ -18,6 +18,10 @@ export type AuditAction =
   | "bright_data.fetch_succeeded"
   | "bright_data.fetch_failed"
   | "bright_data.cache_hit"
+  | "tavily.extract_triggered"
+  | "tavily.extract_succeeded"
+  | "tavily.extract_failed"
+  | "tavily.cache_hit"
   | "special_code.redeemed"
   | "special_code.failed"
   | "account.data_deleted";
