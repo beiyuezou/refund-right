@@ -409,7 +409,7 @@ function AnalysisPage() {
           <PaywallGate
             paid={dispute.paid}
             disputeId={dispute.id}
-            onPaid={load}
+            onPaid={() => { setDispute((d) => (d ? { ...d, paid: true } : d)); void load(); }}
           >
           <section className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-card">
             <h2 className="text-lg font-semibold text-primary">{t("analysis.leverage")}</h2>
@@ -455,7 +455,7 @@ function AnalysisPage() {
           <PaywallGate
             paid={dispute.paid}
             disputeId={dispute.id}
-            onPaid={load}
+            onPaid={() => { setDispute((d) => (d ? { ...d, paid: true } : d)); void load(); }}
           >
           <section className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-card">
             <div className="flex items-center justify-between gap-3 flex-wrap">
