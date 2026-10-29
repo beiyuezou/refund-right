@@ -14,6 +14,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as HelpRouteImport } from './routes/help'
 import { Route as KnowledgeRouteImport } from './routes/knowledge'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as AnalysisDisputeIdRouteImport } from './routes/analysis.$disputeId'
 import { Route as ApiTranscribeAudioRouteImport } from './routes/api/transcribe-audio'
 import { Route as ApiTtsRouteImport } from './routes/api/tts'
@@ -46,6 +47,11 @@ const HelpRoute = HelpRouteImport.update({
 const KnowledgeRoute = KnowledgeRouteImport.update({
   id: '/knowledge',
   path: '/knowledge',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AnalysisDisputeIdRoute = AnalysisDisputeIdRouteImport.update({
@@ -95,6 +101,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/help': typeof HelpRoute
   '/knowledge': typeof KnowledgeRoute
+  '/privacy': typeof PrivacyRoute
   '/analysis/$disputeId': typeof AnalysisDisputeIdRoute
   '/api/transcribe-audio': typeof ApiTranscribeAudioRoute
   '/api/tts': typeof ApiTtsRoute
@@ -110,6 +117,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/help': typeof HelpRoute
   '/knowledge': typeof KnowledgeRoute
+  '/privacy': typeof PrivacyRoute
   '/analysis/$disputeId': typeof AnalysisDisputeIdRoute
   '/api/transcribe-audio': typeof ApiTranscribeAudioRoute
   '/api/tts': typeof ApiTtsRoute
@@ -126,6 +134,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/help': typeof HelpRoute
   '/knowledge': typeof KnowledgeRoute
+  '/privacy': typeof PrivacyRoute
   '/analysis/$disputeId': typeof AnalysisDisputeIdRoute
   '/api/transcribe-audio': typeof ApiTranscribeAudioRoute
   '/api/tts': typeof ApiTtsRoute
@@ -143,6 +152,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/help'
     | '/knowledge'
+    | '/privacy'
     | '/analysis/$disputeId'
     | '/api/transcribe-audio'
     | '/api/tts'
@@ -158,6 +168,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/help'
     | '/knowledge'
+    | '/privacy'
     | '/analysis/$disputeId'
     | '/api/transcribe-audio'
     | '/api/tts'
@@ -173,6 +184,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/help'
     | '/knowledge'
+    | '/privacy'
     | '/analysis/$disputeId'
     | '/api/transcribe-audio'
     | '/api/tts'
@@ -189,6 +201,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   HelpRoute: typeof HelpRoute
   KnowledgeRoute: typeof KnowledgeRoute
+  PrivacyRoute: typeof PrivacyRoute
   AnalysisDisputeIdRoute: typeof AnalysisDisputeIdRoute
   ApiTranscribeAudioRoute: typeof ApiTranscribeAudioRoute
   ApiTtsRoute: typeof ApiTtsRoute
@@ -234,6 +247,13 @@ declare module '@tanstack/react-router' {
       path: '/knowledge'
       fullPath: '/knowledge'
       preLoaderRoute: typeof KnowledgeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/analysis/$disputeId': {
@@ -301,6 +321,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   HelpRoute: HelpRoute,
   KnowledgeRoute: KnowledgeRoute,
+  PrivacyRoute: PrivacyRoute,
   AnalysisDisputeIdRoute: AnalysisDisputeIdRoute,
   ApiTranscribeAudioRoute: ApiTranscribeAudioRoute,
   ApiTtsRoute: ApiTtsRoute,
