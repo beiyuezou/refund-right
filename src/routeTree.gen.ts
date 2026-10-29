@@ -22,7 +22,6 @@ import { Route as ClaimCategoryRouteImport } from './routes/claim.$category'
 import { Route as KnowledgeSlugRouteImport } from './routes/knowledge_.$slug'
 import { Route as AnalysisDisputeIdPrintRouteImport } from './routes/analysis_.$disputeId.print'
 import { Route as ApiPublicPaypalWebhookRouteImport } from './routes/api/public/paypal-webhook'
-import { Route as ApiPublicScrapeBrowserRouteImport } from './routes/api/public/scrape-browser'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -89,11 +88,6 @@ const ApiPublicPaypalWebhookRoute = ApiPublicPaypalWebhookRouteImport.update({
   path: '/api/public/paypal-webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicScrapeBrowserRoute = ApiPublicScrapeBrowserRouteImport.update({
-  id: '/api/public/scrape-browser',
-  path: '/api/public/scrape-browser',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -109,7 +103,6 @@ export interface FileRoutesByFullPath {
   '/knowledge/$slug': typeof KnowledgeSlugRoute
   '/analysis/$disputeId/print': typeof AnalysisDisputeIdPrintRoute
   '/api/public/paypal-webhook': typeof ApiPublicPaypalWebhookRoute
-  '/api/public/scrape-browser': typeof ApiPublicScrapeBrowserRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -125,7 +118,6 @@ export interface FileRoutesByTo {
   '/knowledge/$slug': typeof KnowledgeSlugRoute
   '/analysis/$disputeId/print': typeof AnalysisDisputeIdPrintRoute
   '/api/public/paypal-webhook': typeof ApiPublicPaypalWebhookRoute
-  '/api/public/scrape-browser': typeof ApiPublicScrapeBrowserRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -142,7 +134,6 @@ export interface FileRoutesById {
   '/knowledge_/$slug': typeof KnowledgeSlugRoute
   '/analysis_/$disputeId/print': typeof AnalysisDisputeIdPrintRoute
   '/api/public/paypal-webhook': typeof ApiPublicPaypalWebhookRoute
-  '/api/public/scrape-browser': typeof ApiPublicScrapeBrowserRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -160,7 +151,6 @@ export interface FileRouteTypes {
     | '/knowledge/$slug'
     | '/analysis/$disputeId/print'
     | '/api/public/paypal-webhook'
-    | '/api/public/scrape-browser'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -176,7 +166,6 @@ export interface FileRouteTypes {
     | '/knowledge/$slug'
     | '/analysis/$disputeId/print'
     | '/api/public/paypal-webhook'
-    | '/api/public/scrape-browser'
   id:
     | '__root__'
     | '/'
@@ -192,7 +181,6 @@ export interface FileRouteTypes {
     | '/knowledge_/$slug'
     | '/analysis_/$disputeId/print'
     | '/api/public/paypal-webhook'
-    | '/api/public/scrape-browser'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -209,7 +197,6 @@ export interface RootRouteChildren {
   KnowledgeSlugRoute: typeof KnowledgeSlugRoute
   AnalysisDisputeIdPrintRoute: typeof AnalysisDisputeIdPrintRoute
   ApiPublicPaypalWebhookRoute: typeof ApiPublicPaypalWebhookRoute
-  ApiPublicScrapeBrowserRoute: typeof ApiPublicScrapeBrowserRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -305,13 +292,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPaypalWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/scrape-browser': {
-      id: '/api/public/scrape-browser'
-      path: '/api/public/scrape-browser'
-      fullPath: '/api/public/scrape-browser'
-      preLoaderRoute: typeof ApiPublicScrapeBrowserRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -329,7 +309,6 @@ const rootRouteChildren: RootRouteChildren = {
   KnowledgeSlugRoute: KnowledgeSlugRoute,
   AnalysisDisputeIdPrintRoute: AnalysisDisputeIdPrintRoute,
   ApiPublicPaypalWebhookRoute: ApiPublicPaypalWebhookRoute,
-  ApiPublicScrapeBrowserRoute: ApiPublicScrapeBrowserRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

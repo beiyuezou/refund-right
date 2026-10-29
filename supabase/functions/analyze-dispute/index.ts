@@ -300,7 +300,7 @@ Deno.serve(async (req) => {
         draft_email: parsed.draft_email,
         sources: [
           ...(detected && groundTruth
-            ? [{ title: `${detected.ota} refund policy`, url: detected.url, domain: hostOf(detected.url), provider: "bright_data" }]
+            ? [{ title: `${detected.ota} refund policy`, url: detected.url, domain: hostOf(detected.url), provider: "tavily_extract" }]
             : []),
           ...legalResults.map((l) => ({ title: l.slug.toUpperCase(), url: l.url, domain: hostOf(l.url), provider: "official" })),
           ...tavilySources.map(({ title, url, domain }) => ({ title, url, domain, provider: "tavily" })),

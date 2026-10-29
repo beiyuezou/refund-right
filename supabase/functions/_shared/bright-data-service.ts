@@ -1,9 +1,9 @@
-// Bright Data Web Unlocker integration for fetching OTA refund policies as
-// Ground Truth context for the AI legal analysis.
+// Tavily Extract integration (formerly Bright Data) for fetching OTA refund
+// policies and official legal pages as Ground Truth for the AI analysis.
 //
 // Security:
 // - Only URLs in the hardcoded ALLOWLIST are ever fetched (SSRF guard).
-// - Secrets read from Deno.env only; never logged or returned to client.
+// - TAVILY_API_KEY read from Deno.env only; never logged or returned.
 // - On failure, falls back to cached copy (even if stale); never breaks
 //   the analysis pipeline.
 
@@ -71,18 +71,8 @@ const ALLOWED_HOSTS = new Set(
 );
 
 const CACHE_TTL_MS = 7 * 24 * 3600 * 1000; // 7 days
-const FETCH_TIMEOUT_MS = 45_000;
+const FETCH_TIMEOUT_MS = 30_000;
 const MAX_CONTENT_BYTES = 40_000;
-const BROWSER_TIMEOUT_MS = 55_000;
-
-// Cloudflare Worker route that runs the actual CDP-over-WebSocket call.
-// Configurable so forks of the open-source repo point at their own deployment.
-const SCRAPE_PROXY_URL =
-  Deno.env.get("SCRAPE_PROXY_URL") ?? "https://refundrights.lovable.app/api/public/scrape-browser";
-
-// Sources that are JS-rendered SPAs and need a real headless browser
-// (Bright Data Scraping Browser via CDP) instead of Web Unlocker.
-const BROWSER_SOURCES: Set<OtaSlug> = new Set(["trip", "sg_cccs"]);
 
 export function detectOtaFromStory(
   story: string,
@@ -155,7 +145,7 @@ async function audit(
       metadata,
     });
   } catch (err) {
-    console.error("[bright-data] audit insert failed", err);
+    console.error("[tavily-extract] audit insert failed", err);
   }
 }
 
@@ -198,7 +188,7 @@ export async function fetchOtaRules(
   if (cached) {
     const age = now - new Date(cached.fetched_at as string).getTime();
     if (age < CACHE_TTL_MS) {
-      await audit(admin, userId, "bright_data.cache_hit", {
+      await audit(admin, userId, "tavily.cache_hit", {
         ota,
         age_hours: Math.round(age / 3600_000),
       });
@@ -206,68 +196,41 @@ export async function fetchOtaRules(
     }
   }
 
-  // 2. Cache miss / stale → call Bright Data Web Unlocker.
-  const apiKey = Deno.env.get("BRIGHT_DATA_API_KEY");
-  const zone = Deno.env.get("BRIGHT_DATA_ZONE_ID");
-
-  if (!apiKey || !zone) {
-    console.error("[bright-data] missing BRIGHT_DATA_API_KEY or ZONE_ID");
-    if (cached) {
-      await audit(admin, userId, "bright_data.fetch_failed", {
-        ota,
-        reason: "not_configured",
-      });
-      return { content: cached.raw_content as string, source: "stale_cache" };
-    }
+  // 2. Cache miss / stale -> call Tavily Extract.
+  const apiKey = Deno.env.get("TAVILY_API_KEY");
+  if (!apiKey) {
+    console.error("[tavily-extract] missing TAVILY_API_KEY");
+    if (cached) return { content: cached.raw_content as string, source: "stale_cache" };
     return { content: "", source: "none" };
   }
 
-  const useBrowser = BROWSER_SOURCES.has(ota);
-  await audit(admin, userId, "bright_data.fetch_triggered", {
-    ota,
-    mode: useBrowser ? "scraping_browser" : "web_unlocker",
-  });
-
-  if (useBrowser) {
-    return await fetchViaScrapingBrowser(ota, target, admin, userId, cached);
-  }
+  await audit(admin, userId, "tavily.extract_triggered", { ota });
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
   try {
-    const res = await fetch("https://api.brightdata.com/request", {
+    const res = await fetch("https://api.tavily.com/extract", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        zone,
-        url: target.toString(),
-        format: "raw",
-      }),
+      body: JSON.stringify({ urls: [target.toString()], extract_depth: "advanced" }),
       signal: controller.signal,
     });
 
     if (!res.ok) {
-      let errBody = "";
-      try { errBody = (await res.text()).slice(0, 500); } catch { /* ignore */ }
-      console.error(
-        `[bright-data] upstream ${res.status} for ${ota}: ${errBody}`,
-      );
-      await audit(admin, userId, "bright_data.fetch_failed", {
-        ota,
-        status: res.status,
-        body_preview: errBody,
-      });
+      console.error(`[tavily-extract] upstream ${res.status} for ${ota}`);
+      await audit(admin, userId, "tavily.extract_failed", { ota, status: res.status });
       if (cached) {
         return { content: cached.raw_content as string, source: "stale_cache" };
       }
       return { content: "", source: "none" };
     }
 
-    const raw = await res.text();
+    const payload = (await res.json()) as { results?: { raw_content?: string }[] };
+    const raw = payload.results?.[0]?.raw_content ?? "";
     const text = stripHtml(raw).slice(0, MAX_CONTENT_BYTES);
     if (!text) {
       if (cached) {
@@ -301,7 +264,7 @@ export async function fetchOtaRules(
         );
     }
 
-    await audit(admin, userId, "bright_data.fetch_succeeded", {
+    await audit(admin, userId, "tavily.extract_succeeded", {
       ota,
       bytes: text.length,
       changed: !cached || cached.content_hash !== hash,
@@ -309,140 +272,14 @@ export async function fetchOtaRules(
 
     return { content: text, source: "live" };
   } catch (err) {
-    console.error(`[bright-data] fetch error for ${ota}`, err);
-    await audit(admin, userId, "bright_data.fetch_failed", {
+    console.error(`[tavily-extract] fetch error for ${ota}`, err);
+    await audit(admin, userId, "tavily.extract_failed", {
       ota,
       reason: (err as Error)?.name === "AbortError" ? "timeout" : "network",
     });
     if (cached) {
       return { content: cached.raw_content as string, source: "stale_cache" };
     }
-    return { content: "", source: "none" };
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-// --------------------------------------------------------------------------
-// Scraping Browser path (CDP over WebSocket) for JS-rendered SPA sources.
-// --------------------------------------------------------------------------
-
-type CachedRow =
-  | { raw_content: string; content_hash: string; fetched_at: string }
-  | null;
-
-async function fetchViaScrapingBrowser(
-  ota: OtaSlug,
-  target: URL,
-  admin: SupabaseClient,
-  userId: string | null,
-  cached: CachedRow,
-): Promise<FetchResult> {
-  const browserPwd = Deno.env.get("BRIGHT_DATA_BROWSER_PASSWORD");
-
-  if (!browserPwd) {
-    console.error("[bright-data] scraping browser not configured");
-    await audit(admin, userId, "bright_data.fetch_failed", {
-      ota,
-      reason: "browser_not_configured",
-    });
-    if (cached) {
-      return { content: cached.raw_content, source: "stale_cache" };
-    }
-    return { content: "", source: "none" };
-  }
-
-  const controller = new AbortController();
-  const timer = setTimeout(
-    () => controller.abort(),
-    BROWSER_TIMEOUT_MS,
-  );
-
-  try {
-    const res = await fetch(SCRAPE_PROXY_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-proxy-secret": browserPwd,
-      },
-      body: JSON.stringify({ source: ota, url: target.toString() }),
-      signal: controller.signal,
-    });
-
-    if (!res.ok) {
-      let errBody = "";
-      try { errBody = (await res.text()).slice(0, 300); } catch { /* ignore */ }
-      console.error(
-        `[bright-data] proxy ${res.status} for ${ota}: ${errBody}`,
-      );
-      await audit(admin, userId, "bright_data.fetch_failed", {
-        ota,
-        mode: "scraping_browser_cf",
-        status: res.status,
-        body_preview: errBody,
-      });
-      if (cached) return { content: cached.raw_content, source: "stale_cache" };
-      return { content: "", source: "none" };
-    }
-
-    const payload = (await res.json()) as {
-      html?: string;
-      raw_bytes?: number;
-    };
-    const html = payload.html ?? "";
-
-    const text = stripHtml(html).slice(0, MAX_CONTENT_BYTES);
-    if (!text) {
-      await audit(admin, userId, "bright_data.fetch_failed", {
-        ota,
-        mode: "scraping_browser_cf",
-        reason: "empty_after_strip",
-        raw_bytes: html.length,
-      });
-      if (cached) return { content: cached.raw_content, source: "stale_cache" };
-      return { content: "", source: "none" };
-    }
-
-    const hash = await sha256Hex(text);
-    if (cached && cached.content_hash === hash) {
-      await admin
-        .from("ota_rules_cache")
-        .update({ fetched_at: new Date().toISOString() })
-        .eq("ota_name", ota)
-        .eq("source_url", target.toString());
-    } else {
-      await admin.from("ota_rules_cache").upsert(
-        {
-          ota_name: ota,
-          source_url: target.toString(),
-          raw_content: text,
-          content_hash: hash,
-          fetched_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: "ota_name,source_url" },
-      );
-    }
-
-    await audit(admin, userId, "bright_data.fetch_succeeded", {
-      ota,
-      mode: "scraping_browser_cf",
-      bytes: text.length,
-      raw_bytes: html.length,
-      changed: !cached || cached.content_hash !== hash,
-    });
-
-    return { content: text, source: "live" };
-  } catch (err) {
-    console.error(`[bright-data] scraping browser error for ${ota}`, err);
-    await audit(admin, userId, "bright_data.fetch_failed", {
-      ota,
-      mode: "scraping_browser_cf",
-      reason: (err as Error)?.name === "AbortError"
-        ? "timeout"
-        : (err as Error)?.message?.slice(0, 200) ?? "unknown",
-    });
-    if (cached) return { content: cached.raw_content, source: "stale_cache" };
     return { content: "", source: "none" };
   } finally {
     clearTimeout(timer);
