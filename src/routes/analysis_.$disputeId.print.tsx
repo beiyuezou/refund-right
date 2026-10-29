@@ -60,7 +60,7 @@ function PrintPage() {
     );
   }
   const points = (row.leverage_points ?? []) as { title: string; detail: string }[];
-  const sources = (row.sources ?? []) as { title: string; url: string; domain: string }[];
+  const sources = (row.sources ?? []) as { title: string; url: string; domain: string; provider?: string }[];
 
   return (
     <div className="print-page bg-background text-foreground">
@@ -105,7 +105,7 @@ function PrintPage() {
         </Block>
         {sources.length > 0 && (
           <Block title={t("analysis.sources")}>
-            <ul className="space-y-1 text-xs">{sources.map((s, i) => <li key={i}>{s.title || s.domain} — <span className="text-muted-foreground break-all">{s.url}</span></li>)}</ul>
+            <ul className="space-y-1 text-xs">{sources.map((s, i) => <li key={i}>[{t(`srcLabel.${s.provider ?? "tavily"}`)}] {s.title || s.domain} — <span className="text-muted-foreground break-all">{s.url}</span></li>)}</ul>
           </Block>
         )}
         <Block title={t("analysis.draftEmail")}><pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">{row.draft_email}</pre></Block>

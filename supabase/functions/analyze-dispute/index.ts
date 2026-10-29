@@ -199,7 +199,8 @@ Deno.serve(async (req) => {
       if (existing) return json({ analysis_id: existing.id });
       const t = await translateAnalysis(master as unknown as MasterRow, language, NEBIUS_API_KEY, model);
       if (!t.ok) return json({ error: t.error }, t.status);
-      const { data: row, error: insErr } = await supabase
+      // Ownership verified above; report columns are not browser-selectable, so write as admin.
+      const { data: row, error: insErr } = await admin
         .from("dispute_analyses")
         .insert({
           dispute_id: dispute.id,
@@ -254,12 +255,13 @@ Deno.serve(async (req) => {
       userId,
     );
     const legalDetected = detectLegalSources(dispute.country);
-    const legalResults: { slug: string; source: string; content: string }[] = [];
+    const legalResults: { slug: string; url: string; source: string; content: string }[] = [];
     if (legalDetected.length > 0) {
       const settled = await Promise.all(
         legalDetected.map((l) =>
           fetchOtaRules(l.slug, l.url, admin, userId).then((r) => ({
             slug: l.slug,
+            url: l.url,
             source: r.source,
             content: r.content,
           })),
@@ -286,7 +288,7 @@ Deno.serve(async (req) => {
     }
     const parsed = call.parsed;
     parsed.confidence = clampConfidence(parsed.risk_level, parsed.confidence);
-    const { data: analysis, error: insertErr } = await supabase
+    const { data: analysis, error: insertErr } = await admin
       .from("dispute_analyses")
       .insert({
         dispute_id: dispute.id,
@@ -296,7 +298,13 @@ Deno.serve(async (req) => {
         recommendation: parsed.recommendation,
         leverage_points: parsed.leverage_points,
         draft_email: parsed.draft_email,
-        sources: tavilySources.map(({ title, url, domain }) => ({ title, url, domain })),
+        sources: [
+          ...(detected && groundTruth
+            ? [{ title: `${detected.ota} refund policy`, url: detected.url, domain: hostOf(detected.url), provider: "bright_data" }]
+            : []),
+          ...legalResults.map((l) => ({ title: l.slug.toUpperCase(), url: l.url, domain: hostOf(l.url), provider: "official" })),
+          ...tavilySources.map(({ title, url, domain }) => ({ title, url, domain, provider: "tavily" })),
+        ],
         model,
         language: "en",
       })
@@ -335,7 +343,7 @@ Deno.serve(async (req) => {
         model,
       );
       if (t.ok) {
-        const { data: row } = await supabase
+        const { data: row } = await admin
           .from("dispute_analyses")
           .insert({
             dispute_id: dispute.id,
@@ -615,3 +623,11 @@ Respond by calling produce_analysis.`;
 }
 
 const FAST_TRANSLATION_MODEL = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B";
+
+function hostOf(u: string): string {
+  try {
+    return new URL(u).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+}
