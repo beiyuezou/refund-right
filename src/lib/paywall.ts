@@ -1,3 +1,5 @@
+import type { Json } from "@/integrations/supabase/types";
+
 /** Per-case price for the full report. */
 export const PRICE_CENTS = 990;
 export const CURRENCY = "USD";
@@ -9,9 +11,9 @@ export type ReportRow = {
   risk_level: string;
   confidence: number;
   recommendation: string;
-  leverage_points: unknown;
+  leverage_points: Json;
   draft_email: string;
-  sources: unknown;
+  sources: Json;
   created_at: string;
   language: string;
   parent_analysis_id: string | null;
