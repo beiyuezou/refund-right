@@ -622,3 +622,11 @@ Respond by calling produce_analysis.`;
 }
 
 const FAST_TRANSLATION_MODEL = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B";
+
+function hostOf(u: string): string {
+  try {
+    return new URL(u).hostname.replace(/^www\./, "");
+  } catch {
+    return "";
+  }
+}
