@@ -2,6 +2,7 @@ import { Lock } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PayPalCheckoutButton } from "./PayPalCheckoutButton";
+import { SpecialCodeRedeem } from "./SpecialCodeRedeem";
 
 type Props = {
   paid: boolean;
@@ -78,6 +79,9 @@ export function PaywallGate({
               {t("paywall.cta", { defaultValue: "Unlock with PayPal" })}
             </button>
           )}
+          <div>
+            <SpecialCodeRedeem disputeId={disputeId} onPaid={onPaid} />
+          </div>
         </div>
       </div>
     </div>
