@@ -17,7 +17,7 @@ import { Route as AnalysisDisputeIdRouteImport } from './routes/analysis.$disput
 import { Route as ApiTranscribeAudioRouteImport } from './routes/api/transcribe-audio'
 import { Route as ApiTtsRouteImport } from './routes/api/tts'
 import { Route as ClaimCategoryRouteImport } from './routes/claim.$category'
-import { Route as KnowledgeSlugRouteImport } from './routes/knowledge.$slug'
+import { Route as KnowledgeSlugRouteImport } from './routes/knowledge_.$slug'
 import { Route as ApiPublicPaypalWebhookRouteImport } from './routes/api/public/paypal-webhook'
 import { Route as ApiPublicScrapeBrowserRouteImport } from './routes/api/public/scrape-browser'
 
@@ -62,9 +62,9 @@ const ClaimCategoryRoute = ClaimCategoryRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const KnowledgeSlugRoute = KnowledgeSlugRouteImport.update({
-  id: '/$slug',
-  path: '/$slug',
-  getParentRoute: () => KnowledgeRoute,
+  id: '/knowledge_/$slug',
+  path: '/knowledge/$slug',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicPaypalWebhookRoute = ApiPublicPaypalWebhookRouteImport.update({
   id: '/api/public/paypal-webhook',
@@ -81,7 +81,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
-  '/knowledge': typeof KnowledgeRouteWithChildren
+  '/knowledge': typeof KnowledgeRoute
   '/analysis/$disputeId': typeof AnalysisDisputeIdRoute
   '/api/transcribe-audio': typeof ApiTranscribeAudioRoute
   '/api/tts': typeof ApiTtsRoute
@@ -94,7 +94,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
-  '/knowledge': typeof KnowledgeRouteWithChildren
+  '/knowledge': typeof KnowledgeRoute
   '/analysis/$disputeId': typeof AnalysisDisputeIdRoute
   '/api/transcribe-audio': typeof ApiTranscribeAudioRoute
   '/api/tts': typeof ApiTtsRoute
@@ -108,12 +108,12 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
-  '/knowledge': typeof KnowledgeRouteWithChildren
+  '/knowledge': typeof KnowledgeRoute
   '/analysis/$disputeId': typeof AnalysisDisputeIdRoute
   '/api/transcribe-audio': typeof ApiTranscribeAudioRoute
   '/api/tts': typeof ApiTtsRoute
   '/claim/$category': typeof ClaimCategoryRoute
-  '/knowledge/$slug': typeof KnowledgeSlugRoute
+  '/knowledge_/$slug': typeof KnowledgeSlugRoute
   '/api/public/paypal-webhook': typeof ApiPublicPaypalWebhookRoute
   '/api/public/scrape-browser': typeof ApiPublicScrapeBrowserRoute
 }
@@ -154,7 +154,7 @@ export interface FileRouteTypes {
     | '/api/transcribe-audio'
     | '/api/tts'
     | '/claim/$category'
-    | '/knowledge/$slug'
+    | '/knowledge_/$slug'
     | '/api/public/paypal-webhook'
     | '/api/public/scrape-browser'
   fileRoutesById: FileRoutesById
@@ -163,11 +163,12 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   DashboardRoute: typeof DashboardRoute
-  KnowledgeRoute: typeof KnowledgeRouteWithChildren
+  KnowledgeRoute: typeof KnowledgeRoute
   AnalysisDisputeIdRoute: typeof AnalysisDisputeIdRoute
   ApiTranscribeAudioRoute: typeof ApiTranscribeAudioRoute
   ApiTtsRoute: typeof ApiTtsRoute
   ClaimCategoryRoute: typeof ClaimCategoryRoute
+  KnowledgeSlugRoute: typeof KnowledgeSlugRoute
   ApiPublicPaypalWebhookRoute: typeof ApiPublicPaypalWebhookRoute
   ApiPublicScrapeBrowserRoute: typeof ApiPublicScrapeBrowserRoute
 }
@@ -230,12 +231,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClaimCategoryRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/knowledge/$slug': {
-      id: '/knowledge/$slug'
-      path: '/$slug'
+    '/knowledge_/$slug': {
+      id: '/knowledge_/$slug'
+      path: '/knowledge/$slug'
       fullPath: '/knowledge/$slug'
       preLoaderRoute: typeof KnowledgeSlugRouteImport
-      parentRoute: typeof KnowledgeRoute
+      parentRoute: typeof rootRouteImport
     }
     '/api/public/paypal-webhook': {
       id: '/api/public/paypal-webhook'
@@ -254,27 +255,16 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface KnowledgeRouteChildren {
-  KnowledgeSlugRoute: typeof KnowledgeSlugRoute
-}
-
-const KnowledgeRouteChildren: KnowledgeRouteChildren = {
-  KnowledgeSlugRoute: KnowledgeSlugRoute,
-}
-
-const KnowledgeRouteWithChildren = KnowledgeRoute._addFileChildren(
-  KnowledgeRouteChildren,
-)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   DashboardRoute: DashboardRoute,
-  KnowledgeRoute: KnowledgeRouteWithChildren,
+  KnowledgeRoute: KnowledgeRoute,
   AnalysisDisputeIdRoute: AnalysisDisputeIdRoute,
   ApiTranscribeAudioRoute: ApiTranscribeAudioRoute,
   ApiTtsRoute: ApiTtsRoute,
   ClaimCategoryRoute: ClaimCategoryRoute,
+  KnowledgeSlugRoute: KnowledgeSlugRoute,
   ApiPublicPaypalWebhookRoute: ApiPublicPaypalWebhookRoute,
   ApiPublicScrapeBrowserRoute: ApiPublicScrapeBrowserRoute,
 }
