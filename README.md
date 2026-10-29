@@ -17,3 +17,16 @@ Traveler -> RefundRights app -> analyze-dispute function
 ```
 - **Where:** `supabase/functions/analyze-dispute/index.ts`. A multi-agent prompt (Evidence, Legal, Finance, Localization agents) is grounded with live sources from Bright Data and Tavily. Nemotron returns structured output through function calling: risk level, recommendation, leverage points, and a bilingual complaint email.
 - The model name is stored with every analysis (`dispute_analyses.model`).
+
+## Configuration
+All credentials are server-side secrets (never committed). See `SECURITY.md` and `.env.example`.
+
+| Secret | Used for | Where to get it |
+|---|---|---|
+| `NEBIUS_API_KEY` | Nemotron analysis & translation | Nebius Token Factory console |
+| `TAVILY_API_KEY` | Live legal/policy search | tavily.com dashboard |
+| `BRIGHT_DATA_*` | Fetching platform policy & official law pages | Bright Data control panel (Web Unlocker / Browser API zones) |
+| `SCRAPE_PROXY_URL` | URL of your deployed `/api/public/scrape-browser` route | Your deployment |
+| `ELEVENLABS_API_KEY` | Read-aloud and voice input | ElevenLabs dashboard |
+| `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_WEBHOOK_ID`, `PAYPAL_ENV` | One-time report unlock (Sandbox by default) | PayPal Developer dashboard |
+| `SPECIAL_UNLOCK_CODE` | Optional promo unlock code | Choose your own |

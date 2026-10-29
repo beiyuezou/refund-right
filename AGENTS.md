@@ -1,4 +1,5 @@
 # AGENTS.md
+- Public repo hygiene: no secret values in the repo (names only in README/.env.example); full PayPal payloads are not stored; audit/rate-limit logs expire after 90 days via pg_cron; users self-delete via `deleteMyData` — required for open-sourcing the code.
 - Model tiering: main analysis uses Nemotron Super; translation tries Nemotron Nano first and falls back to Super on error or untranslated output — faster/cheaper while keeping quality.
 - `analyze-dispute` saves analysis rows with the admin client after verifying ownership, because report columns are not selectable by browsers; each saved source records its provider (tavily / bright_data / official).
 - Dispute analysis AI runs on Nebius Token Factory (OpenAI-compatible) with an NVIDIA Nemotron model, key `NEBIUS_API_KEY`, in `supabase/functions/analyze-dispute` — required by the Nebius × NVIDIA hackathon rules.
