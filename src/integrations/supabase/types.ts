@@ -330,12 +330,68 @@ export type Database = {
         }
         Relationships: []
       }
+      special_code_redemptions: {
+        Row: {
+          created_at: string
+          dispute_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dispute_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dispute_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "special_code_redemptions_dispute_id_fkey"
+            columns: ["dispute_id"]
+            isOneToOne: true
+            referencedRelation: "disputes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      special_code_settings: {
+        Row: {
+          active: boolean
+          expires_at: string | null
+          id: number
+          max_uses: number
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          expires_at?: string | null
+          id?: number
+          max_uses?: number
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          expires_at?: string | null
+          id?: number
+          max_uses?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      redeem_special_code: {
+        Args: { _dispute_id: string; _user_id: string }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
