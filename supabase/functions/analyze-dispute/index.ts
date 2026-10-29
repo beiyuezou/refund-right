@@ -602,6 +602,10 @@ Respond by calling produce_analysis.`;
     }
     if (!call.ok) return call;
     last = enforceTranslation(master, call.parsed);
+    // Smaller models sometimes echo English; require real Chinese text.
+    if (language === "zh" && (call.parsed.recommendation.match(/[\u4e00-\u9fff]/g)?.length ?? 0) < 10) {
+      last.mismatches.push("not_translated");
+    }
     if (last.mismatches.length === 0) break;
   }
   if (!last || last.mismatches.includes("leverage_count")) {
