@@ -249,6 +249,56 @@ export type Database = {
         }
         Relationships: []
       }
+      expert_help_requests: {
+        Row: {
+          case_summary: string | null
+          contact_email: string
+          created_at: string
+          dispute_id: string | null
+          id: string
+          notes: string | null
+          preferred_date: string | null
+          preferred_slot: string | null
+          status: string
+          timezone: string | null
+          user_id: string | null
+        }
+        Insert: {
+          case_summary?: string | null
+          contact_email: string
+          created_at?: string
+          dispute_id?: string | null
+          id?: string
+          notes?: string | null
+          preferred_date?: string | null
+          preferred_slot?: string | null
+          status?: string
+          timezone?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          case_summary?: string | null
+          contact_email?: string
+          created_at?: string
+          dispute_id?: string | null
+          id?: string
+          notes?: string | null
+          preferred_date?: string | null
+          preferred_slot?: string | null
+          status?: string
+          timezone?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expert_help_requests_dispute_id_fkey"
+            columns: ["dispute_id"]
+            isOneToOne: false
+            referencedRelation: "disputes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ota_rules_cache: {
         Row: {
           content_hash: string
