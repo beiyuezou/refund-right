@@ -3,3 +3,5 @@
 - Each analysis run produces one English master row; other report languages are translation rows (`parent_analysis_id`) that must keep the master's verdict, confidence and argument count — keeps EN/ZH results consistent.
 - Full report content (recommendation, arguments, email, sources) is served only via `getAnalysisReport` server fn, redacted until `disputes.paid`; browsers cannot select those columns and only service_role can set `paid` — keeps the paywall server-enforced.
 - Special unlock code is checked only server-side (`redeemSpecialCode`, secret `SPECIAL_UNLOCK_CODE`, limits in `special_code_settings` via atomic `redeem_special_code`) and sets the same `disputes.paid` flag as PayPal — one unlock path for the report.
+- Case progress lives in `disputes.case_status` (validated by trigger) plus append-only `dispute_events`; `disputes.status` stays reserved for AI analysis state — keeps tracking separate from the analysis pipeline. Rules in `src/lib/case-status.ts`.
+- UI locales are EN/ZH (in `i18n.ts`) and NL (`locales/nl.json`); feature strings added later go in `locales/extra.ts` for all three — one place to keep languages in sync.
