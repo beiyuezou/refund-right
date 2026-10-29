@@ -17,7 +17,7 @@ const OUTCOME_LABEL: Record<CaseOutcome, string> = {
   rejected: "Rejected",
 };
 
-export const Route = createFileRoute("/knowledge/$slug")({
+export const Route = createFileRoute("/knowledge_/$slug")({
   loader: ({ params }) => {
     const article = getArticle(params.slug);
     if (!article) throw notFound();
@@ -67,7 +67,7 @@ const CAT_TO_CLAIM: Record<string, CategoryKey> = {
 
 function ArticlePage() {
   const { t, i18n } = useTranslation();
-  const { slug } = useParams({ from: "/knowledge/$slug" });
+  const { slug } = useParams({ from: "/knowledge_/$slug" });
   const article = getArticle(slug)!;
   const claimCategory = CAT_TO_CLAIM[article.category];
   const related = ARTICLES.filter((a) => a.slug !== article.slug).slice(0, 3);
