@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as HelpRouteImport } from './routes/help'
 import { Route as KnowledgeRouteImport } from './routes/knowledge'
 import { Route as AnalysisDisputeIdRouteImport } from './routes/analysis.$disputeId'
 import { Route as ApiTranscribeAudioRouteImport } from './routes/api/transcribe-audio'
@@ -35,6 +36,11 @@ const AuthRoute = AuthRouteImport.update({
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HelpRoute = HelpRouteImport.update({
+  id: '/help',
+  path: '/help',
   getParentRoute: () => rootRouteImport,
 } as any)
 const KnowledgeRoute = KnowledgeRouteImport.update({
@@ -87,6 +93,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
+  '/help': typeof HelpRoute
   '/knowledge': typeof KnowledgeRoute
   '/analysis/$disputeId': typeof AnalysisDisputeIdRoute
   '/api/transcribe-audio': typeof ApiTranscribeAudioRoute
@@ -101,6 +108,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
+  '/help': typeof HelpRoute
   '/knowledge': typeof KnowledgeRoute
   '/analysis/$disputeId': typeof AnalysisDisputeIdRoute
   '/api/transcribe-audio': typeof ApiTranscribeAudioRoute
@@ -116,6 +124,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/dashboard': typeof DashboardRoute
+  '/help': typeof HelpRoute
   '/knowledge': typeof KnowledgeRoute
   '/analysis/$disputeId': typeof AnalysisDisputeIdRoute
   '/api/transcribe-audio': typeof ApiTranscribeAudioRoute
@@ -132,6 +141,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/dashboard'
+    | '/help'
     | '/knowledge'
     | '/analysis/$disputeId'
     | '/api/transcribe-audio'
@@ -146,6 +156,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/dashboard'
+    | '/help'
     | '/knowledge'
     | '/analysis/$disputeId'
     | '/api/transcribe-audio'
@@ -160,6 +171,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/dashboard'
+    | '/help'
     | '/knowledge'
     | '/analysis/$disputeId'
     | '/api/transcribe-audio'
@@ -175,6 +187,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
   DashboardRoute: typeof DashboardRoute
+  HelpRoute: typeof HelpRoute
   KnowledgeRoute: typeof KnowledgeRoute
   AnalysisDisputeIdRoute: typeof AnalysisDisputeIdRoute
   ApiTranscribeAudioRoute: typeof ApiTranscribeAudioRoute
@@ -207,6 +220,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/help': {
+      id: '/help'
+      path: '/help'
+      fullPath: '/help'
+      preLoaderRoute: typeof HelpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/knowledge': {
@@ -279,6 +299,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
   DashboardRoute: DashboardRoute,
+  HelpRoute: HelpRoute,
   KnowledgeRoute: KnowledgeRoute,
   AnalysisDisputeIdRoute: AnalysisDisputeIdRoute,
   ApiTranscribeAudioRoute: ApiTranscribeAudioRoute,
