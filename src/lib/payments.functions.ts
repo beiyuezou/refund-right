@@ -116,17 +116,18 @@ export const capturePaypalOrder = createServerFn({ method: "POST" })
       console.error("paypal capture failed", res.status);
       return { ok: false, code: "paypal_capture_failed" };
     }
+    // Privacy: never store the full PayPal reply (it contains payer name/email).
     if (!isValidCapture(payload, data.dispute_id)) {
       await supabaseAdmin
         .from("payments")
-        .update({ status: "mismatch", raw_payload: payload })
+        .update({ status: "mismatch", raw_payload: null })
         .eq("id", pay.id);
       return { ok: false, code: "capture_mismatch" };
     }
 
     await supabaseAdmin
       .from("payments")
-      .update({ status: "completed", raw_payload: payload })
+      .update({ status: "completed", raw_payload: null })
       .eq("id", pay.id);
     await supabaseAdmin
       .from("disputes")
