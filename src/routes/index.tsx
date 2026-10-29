@@ -263,7 +263,14 @@ function HomePage() {
           {[1, 2, 3, 4, 5].map((n) => (
             <AccordionItem key={n} value={`q${n}`}>
               <AccordionTrigger className="text-left font-semibold text-primary">{t(`faq.q${n}`)}</AccordionTrigger>
-              <AccordionContent className="text-muted-foreground leading-relaxed">{t(`faq.a${n}`)}</AccordionContent>
+              <AccordionContent className="text-muted-foreground leading-relaxed">
+                {t(`faq.a${n}`)}
+                {n === 4 && (
+                  <Link to="/help" className="mt-3 inline-flex items-center gap-1.5 font-semibold text-accent hover:underline">
+                    {t("help.cta")} <ArrowRight className="h-4 w-4" />
+                  </Link>
+                )}
+              </AccordionContent>
             </AccordionItem>
           ))}
         </Accordion>
