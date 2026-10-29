@@ -176,9 +176,10 @@ Deno.serve(async (req) => {
 
     // ---------- Translate mode: reuse the master analysis ----------
     if (mode === "translate") {
-      const { data: master } = await supabase
+      const { data: master } = await admin
         .from("dispute_analyses")
         .select("id, risk_level, confidence, recommendation, leverage_points, draft_email, sources, language")
+        .eq("user_id", userId)
         .eq("dispute_id", dispute.id)
         .is("parent_analysis_id", null)
         .order("created_at", { ascending: false })
