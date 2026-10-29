@@ -1,6 +1,7 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import nl from "./locales/nl.json";
+import { extra } from "./locales/extra";
 
 export const LANGUAGES = [
   { code: "en", label: "English" },
@@ -551,6 +552,7 @@ if (!i18n.isInitialized) {
       interpolation: { escapeValue: false },
       react: { useSuspense: false },
     });
+  (["en", "zh", "nl"] as const).forEach((l) => i18n.addResourceBundle(l, "translation", extra[l], true, false));
 }
 
 // Client-only: sync to user preference AFTER hydration to avoid SSR mismatch.
