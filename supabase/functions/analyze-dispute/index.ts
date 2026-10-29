@@ -609,3 +609,5 @@ Respond by calling produce_analysis.`;
   }
   return { ok: true, ...last, model: used };
 }
+
+const FAST_TRANSLATION_MODEL = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B";
