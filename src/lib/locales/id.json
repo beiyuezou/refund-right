@@ -46,7 +46,20 @@
     "step3Body": "Email formal siap kirim ke platform atau regulator. Dilengkapi poin-poin argumen kuat untuk menuntut hak Anda.",
     "knowYourRights": "Ketahui hak Anda",
     "countryGuides": "Panduan spesifik per negara untuk wisatawan di Asia Tenggara.",
-    "allArticles": "Semua artikel"
+    "allArticles": "Semua artikel",
+    "preview": {
+      "title": "Deposit hotel",
+      "meta": "Bangkok, Thailand · ฿5.000",
+      "example": "Contoh",
+      "strong": "Kasus kuat",
+      "verdict": "Menahan deposit tanpa bukti kerusakan melanggar Consumer Protection Act Thailand B.E. 2522.",
+      "leverage": "Poin kunci",
+      "p1": "Tidak ada laporan kerusakan saat check-out",
+      "p2": "Pra-otorisasi kartu melebihi ketentuan pemesanan",
+      "p3": "Pengaduan ke OCPB tersedia dalam 30 hari",
+      "email": "Email pengaduan",
+      "draftReady": "Draf siap"
+    }
   },
   "categories": {
     "hotel": {

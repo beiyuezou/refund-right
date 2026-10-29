@@ -13,6 +13,7 @@ import { useTranslation } from "react-i18next";
 import { SiteHeader, SiteFooter } from "@/components/SiteChrome";
 import { type CategoryKey } from "@/lib/categories";
 import { ARTICLES } from "@/lib/knowledge";
+import { HeroPreviewCard } from "@/components/HeroPreviewCard";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -57,7 +58,8 @@ function HomePage() {
           className="absolute -top-24 -right-24 -z-10 h-72 w-72 rounded-full bg-accent/10 blur-3xl"
         />
         <div className="mx-auto max-w-6xl px-4 sm:px-6 pt-14 sm:pt-20 pb-12 sm:pb-20">
-          <div className="max-w-3xl">
+          <div className="grid gap-12 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+          <div>
             <span className="inline-flex items-center gap-2 rounded-full border border-accent/30 bg-accent-soft px-3 py-1 text-xs font-semibold text-accent uppercase tracking-wider">
               <Sparkles className="h-3.5 w-3.5" /> {t("home.badge")}
             </span>
@@ -94,6 +96,8 @@ function HomePage() {
                 <CheckCircle2 className="h-4 w-4 text-accent" /> {t("home.freeStart")}
               </span>
             </div>
+          </div>
+          <HeroPreviewCard />
           </div>
         </div>
       </section>

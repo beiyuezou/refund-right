@@ -48,6 +48,7 @@ const en = {
     notLegal: "Informational only · Not legal advice",
   },
   home: {
+    preview: {"title": "Hotel deposit", "meta": "Bangkok, Thailand · ฿5,000", "example": "Example", "strong": "Strong case", "verdict": "Withholding the deposit without proof of damage breaches Thailand's Consumer Protection Act B.E. 2522.", "leverage": "Leverage points", "p1": "No damage report was issued at checkout", "p2": "Card pre-authorisation exceeded the booking terms", "p3": "OCPB complaint route available within 30 days", "email": "Complaint email", "draftReady": "Draft ready"},
     badge: "SE Asia · AI-powered",
     headline1: "Don't let them",
     headline2: "keep",
@@ -301,6 +302,7 @@ const zh: typeof en = {
     notLegal: "仅供参考 · 非法律意见",
   },
   home: {
+    preview: {"title": "酒店押金", "meta": "泰国曼谷 · ฿5,000", "example": "示例", "strong": "胜算较大", "verdict": "在无损坏证据的情况下扣留押金，违反泰国《消费者保护法》B.E. 2522。", "leverage": "关键论点", "p1": "退房时未出具任何损坏报告", "p2": "信用卡预授权金额超出预订条款", "p3": "30 天内可向泰国消费者保护委员会投诉", "email": "申诉邮件", "draftReady": "草稿已生成"},
     badge: "东南亚 · AI 驱动",
     headline1: "别让他们",
     headline2: "扣下",
