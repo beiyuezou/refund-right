@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Shield, Moon, Sun, Languages, User, LogOut } from "lucide-react";
+import { Shield, Moon, Sun, Languages, User, LogOut, FileWarning } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuth, signOut } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
@@ -136,9 +136,11 @@ export function SiteHeader() {
           <Link
             to="/claim/$category"
             params={{ category: "hotel" }}
-            className="ml-1 inline-flex h-9 items-center justify-center rounded-md bg-accent px-4 text-sm font-semibold text-accent-foreground shadow-sm transition-all hover:opacity-95 hover:shadow"
+            aria-label={t("nav.reportDispute")}
+            className="ml-1 inline-flex h-9 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-md bg-accent px-2.5 text-sm font-semibold text-accent-foreground shadow-sm transition-all hover:opacity-95 hover:shadow sm:px-4"
           >
-            {t("nav.reportDispute")}
+            <FileWarning className="h-4 w-4 shrink-0 sm:hidden" strokeWidth={2.2} />
+            <span className="hidden sm:inline">{t("nav.reportDispute")}</span>
           </Link>
           {user ? <AccountMenu email={user.email ?? undefined} /> : null}
         </nav>
