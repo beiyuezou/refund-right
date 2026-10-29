@@ -83,6 +83,11 @@ function AccountMenu({ email }: { email: string | undefined }) {
             {t("nav.myDisputes")}
           </Link>
         </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/privacy" className="cursor-pointer">
+            {t("privacy.menu")}
+          </Link>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => signOut()} className="cursor-pointer text-muted-foreground">
           <LogOut className="mr-2 h-4 w-4" />
@@ -172,6 +177,7 @@ export function SiteFooter() {
             <li><Link to="/claim/$category" params={{ category: "flight" }} className="hover:text-primary">{t("footer.flight")}</Link></li>
             <li><Link to="/claim/$category" params={{ category: "insurance" }} className="hover:text-primary">{t("footer.insurance")}</Link></li>
             <li><Link to="/knowledge" className="hover:text-primary">{t("footer.knowledgeBase")}</Link></li>
+            <li><Link to="/privacy" className="hover:text-primary">{t("privacy.title")}</Link></li>
           </ul>
         </div>
         <div className="text-sm">

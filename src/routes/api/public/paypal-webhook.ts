@@ -60,7 +60,7 @@ export const Route = createFileRoute("/api/public/paypal-webhook")({
 
         await supabaseAdmin
           .from("payments")
-          .update({ status: "completed", raw_payload: event })
+          .update({ status: "completed", raw_payload: null })
           .eq("id", pay.id);
         await supabaseAdmin
           .from("disputes")
