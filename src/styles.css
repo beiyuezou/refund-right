@@ -139,3 +139,10 @@
     line-height: 1.15;
   }
 }
+
+@media print {
+  @page { size: A4; margin: 14mm; }
+  .no-print { display: none !important; }
+  html, body { background: var(--background) !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .avoid-break { break-inside: avoid; }
+}

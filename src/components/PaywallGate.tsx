@@ -1,4 +1,4 @@
-import { Lock } from "lucide-react";
+import { Check, Lock } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { PayPalCheckoutButton } from "./PayPalCheckoutButton";
@@ -55,6 +55,13 @@ export function PaywallGate({
                   "Get the complete legal argument, amount calculation, and ready-to-send complaint email.",
               })}
           </p>
+          <ul className="mt-3 space-y-1 text-left text-xs text-muted-foreground">
+            {(["f3", "f4", "f5", "f6"] as const).map((k) => (
+              <li key={k} className="flex items-start gap-1.5">
+                <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent" /> {t(`value.${k}`)}
+              </li>
+            ))}
+          </ul>
           <p className="mt-3 text-sm font-semibold text-primary">
             {priceLabel}
           </p>
