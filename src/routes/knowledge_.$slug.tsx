@@ -4,8 +4,20 @@ import { useTranslation } from "react-i18next";
 import { SiteHeader, SiteFooter } from "@/components/SiteChrome";
 import { ARTICLES, getArticle } from "@/lib/knowledge";
 import type { CategoryKey } from "@/lib/categories";
+import { CASES, type CaseOutcome } from "@/lib/knowledge-cases";
 
-export const Route = createFileRoute("/knowledge/$slug")({
+const OUTCOME_STYLE: Record<CaseOutcome, string> = {
+  full: "bg-risk-strong/15 text-risk-strong",
+  partial: "bg-risk-moderate/20 text-accent-foreground dark:text-risk-moderate",
+  rejected: "bg-risk-weak/15 text-risk-weak",
+};
+const OUTCOME_LABEL: Record<CaseOutcome, string> = {
+  full: "Full refund",
+  partial: "Partial refund",
+  rejected: "Rejected",
+};
+
+export const Route = createFileRoute("/knowledge_/$slug")({
   loader: ({ params }) => {
     const article = getArticle(params.slug);
     if (!article) throw notFound();
@@ -50,14 +62,16 @@ const CAT_TO_CLAIM: Record<string, CategoryKey> = {
   flight: "flight",
   insurance: "insurance",
   general: "hotel",
+  transport: "hotel",
 };
 
 function ArticlePage() {
   const { t, i18n } = useTranslation();
-  const { slug } = useParams({ from: "/knowledge/$slug" });
+  const { slug } = useParams({ from: "/knowledge_/$slug" });
   const article = getArticle(slug)!;
   const claimCategory = CAT_TO_CLAIM[article.category];
   const related = ARTICLES.filter((a) => a.slug !== article.slug).slice(0, 3);
+  const cases = CASES[article.slug] ?? [];
   const dateLocale = i18n.language?.startsWith("zh") ? "zh-CN" : undefined;
 
   return (
@@ -113,6 +127,49 @@ function ArticlePage() {
               ))}
             </ol>
           </Section>
+
+          {cases.length > 0 && (
+            <Section title={t("knowledge.cases", { defaultValue: "Example cases" })}>
+              <div className="space-y-4">
+                {cases.map((c, i) => (
+                  <article key={i} className="rounded-xl border border-border bg-card p-5 shadow-card">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <h4 className="min-w-0 text-base font-semibold text-primary leading-snug">{c.title}</h4>
+                      <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide ${OUTCOME_STYLE[c.outcome]}`}>
+                        {t(`knowledge.outcome_${c.outcome}`, { defaultValue: OUTCOME_LABEL[c.outcome] })}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {c.tags.map((tag) => (
+                        <span key={tag} className="rounded-full bg-secondary px-2 py-0.5 text-xs text-muted-foreground">{tag}</span>
+                      ))}
+                    </div>
+                    <dl className="mt-4 space-y-2.5 text-sm">
+                      <div>
+                        <dt className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("knowledge.caseHappened", { defaultValue: "What happened" })}</dt>
+                        <dd className="mt-0.5 text-foreground leading-relaxed">{c.situation}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("knowledge.caseAction", { defaultValue: "What they did" })}</dt>
+                        <dd className="mt-0.5 text-foreground leading-relaxed">{c.action}</dd>
+                      </div>
+                      <div>
+                        <dt className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{t("knowledge.caseOutcome", { defaultValue: "Outcome" })}</dt>
+                        <dd className="mt-0.5 text-foreground leading-relaxed">{c.result}</dd>
+                      </div>
+                    </dl>
+                  </article>
+                ))}
+              </div>
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs text-muted-foreground">{t("knowledge.casesDisclaimer", { defaultValue: "Illustrative examples, not legal advice." })}</p>
+                <Link to="/claim/$category" params={{ category: claimCategory }} className="inline-flex items-center gap-1.5 text-sm font-semibold text-accent hover:opacity-90">
+                  {t("knowledge.startSimilar", { defaultValue: "Start a similar claim" })} <ArrowRight className="h-4 w-4" />
+                </Link>
+              </div>
+            </Section>
+          )}
+
 
           <Section title={t("knowledge.escalate")}>
             <ul className="space-y-2.5">
