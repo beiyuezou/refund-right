@@ -14,6 +14,8 @@ import {
   Sparkles,
   Languages,
   Pencil,
+  FileDown,
+  Send,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { SiteHeader, SiteFooter } from "@/components/SiteChrome";
@@ -37,6 +39,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { saveDraftEmail } from "@/lib/analysis.functions";
 import { PaywallGate } from "@/components/PaywallGate";
 import { getAnalysisReport } from "@/lib/report.functions";
+import { CaseTracker, recordCaseStatus } from "@/components/CaseTracker";
+import { buildMailto, splitDraft } from "@/lib/case-status";
 
 export const Route = createFileRoute("/analysis/$disputeId")({
   head: () => ({
@@ -66,6 +70,9 @@ type Dispute = {
   status: string;
   created_at: string;
   paid: boolean;
+  case_status: string;
+  case_status_at: string;
+  recovered_amount: number | null;
 };
 
 type LeveragePoint = { title: string; detail: string };
@@ -100,6 +107,7 @@ function AnalysisPage() {
   const saveDraft = useServerFn(saveDraftEmail);
   const fetchReport = useServerFn(getAnalysisReport);
 
+  const [trackKey, setTrackKey] = useState(0);
   const [viewLang, setViewLang] = useState<"en" | "zh" | null>(null);
 
   const load = useCallback(async (lang?: "en" | "zh") => {
@@ -108,7 +116,7 @@ function AnalysisPage() {
       supabase
         .from("disputes")
         .select(
-          "id, category, country, city, incident_date, story, amount, currency, status, created_at, paid",
+          "id, category, country, city, incident_date, story, amount, currency, status, created_at, paid, case_status, case_status_at, recovered_amount",
         )
         .eq("id", disputeId)
         .maybeSingle(),
@@ -193,6 +201,21 @@ function AnalysisPage() {
       return;
     }
     rerun(language);
+  }
+
+  async function sendFromMyEmail() {
+    if (!analysis || !dispute) return;
+    const { subject, body } = splitDraft(analysis.draft_email, t("report.defaultSubject"));
+    window.location.href = buildMailto(subject, body);
+    if (dispute.case_status === "submitted") {
+      try {
+        await recordCaseStatus(dispute.id, "email_sent");
+        setDispute({ ...dispute, case_status: "email_sent", case_status_at: new Date().toISOString() });
+        setTrackKey((k) => k + 1);
+      } catch {
+        /* status update is best-effort */
+      }
+    }
   }
 
   async function saveEdit() {
@@ -388,19 +411,18 @@ function AnalysisPage() {
       )}
 
       {analysis && (
-        <>
-          {/* Risk gauge */}
-          <RiskGauge risk={analysis.risk_level} confidence={analysis.confidence} />
+        <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">
+          <div className="min-w-0 lg:[&>*:first-child]:mt-0 [&>*:first-child]:mt-0">
 
           {/* Recommendation */}
-          <section className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-card">
+          <section className="mt-6 rounded-2xl border border-accent/30 bg-card p-6 shadow-elevated">
             <h2 className="flex items-center gap-2 text-lg font-semibold text-primary">
               <Sparkles className="h-5 w-5 text-accent" /> {t("analysis.recommendation")}
             </h2>
             <div className="mt-2">
               <PlayAudioButton text={analysis.recommendation} cacheKey={`rec-${analysis.id}`} />
             </div>
-            <div className="mt-3 prose-styles whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">
+            <div className="mt-3 border-l-2 border-accent pl-4 whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">
               {analysis.recommendation}
             </div>
           </section>
@@ -416,8 +438,8 @@ function AnalysisPage() {
             <p className="text-sm text-muted-foreground mt-1">{t("analysis.leverageSub")}</p>
             <ul className="mt-4 space-y-3">
               {analysis.leverage_points.map((p, i) => (
-                <li key={i} className="flex gap-3 rounded-lg border border-border bg-secondary/30 p-3">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent text-accent-foreground text-xs font-bold">
+                <li key={i} className="flex gap-4 rounded-xl border border-border bg-background p-4 transition-colors hover:border-accent/40">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-bold">
                     {i + 1}
                   </span>
                   <div>
@@ -539,7 +561,7 @@ function AnalysisPage() {
             ) : (
               <>
                 <pre
-                  className={`mt-4 whitespace-pre-wrap rounded-lg border border-border bg-secondary/30 p-4 text-sm text-foreground font-sans leading-relaxed overflow-hidden ${showFullEmail ? "" : "max-h-80"}`}
+                  className={`mt-4 whitespace-pre-wrap rounded-lg border border-border border-t-4 border-t-accent bg-background p-5 sm:p-6 shadow-card text-sm text-foreground font-sans leading-relaxed overflow-hidden ${showFullEmail ? "" : "max-h-80"}`}
                 >
                   {analysis.draft_email}
                 </pre>
@@ -559,7 +581,40 @@ function AnalysisPage() {
             </p>
           </section>
           </PaywallGate>
-        </>
+          </div>
+
+          <aside className="space-y-4 lg:sticky lg:top-20 order-first lg:order-none">
+            <RiskGauge risk={analysis.risk_level} confidence={analysis.confidence} />
+            {dispute.paid && (
+              <div className="rounded-2xl border border-border bg-card p-4 shadow-card space-y-2">
+                <Button onClick={sendFromMyEmail} className="w-full gap-2 bg-accent text-accent-foreground hover:opacity-95">
+                  <Send className="h-4 w-4" /> {t("report.sendEmail")}
+                </Button>
+                <p className="text-[11px] text-muted-foreground leading-snug">{t("report.sendHint")}</p>
+                <Link
+                  to="/analysis/$disputeId/print"
+                  params={{ disputeId: dispute.id }}
+                  className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-input bg-background text-sm font-medium text-primary hover:bg-secondary"
+                >
+                  <FileDown className="h-4 w-4" /> {t("report.pdf")}
+                </Link>
+              </div>
+            )}
+            <CaseTracker
+              dispute={dispute}
+              refreshKey={trackKey}
+              onChange={(p) => setDispute((d) => (d ? { ...d, ...p } as Dispute : d))}
+            />
+          </aside>
+        </div>
+      )}
+
+      {analysis && dispute.paid && (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 p-3 backdrop-blur lg:hidden">
+          <Button onClick={sendFromMyEmail} className="w-full gap-2 bg-accent text-accent-foreground hover:opacity-95">
+            <Send className="h-4 w-4" /> {t("report.sendEmail")}
+          </Button>
+        </div>
       )}
 
       <p className="mt-8 rounded-md border border-border bg-secondary/40 p-3 text-xs text-muted-foreground">
@@ -618,8 +673,8 @@ function RiskGauge({
   const largeArc = angle > 180 ? 1 : 0;
 
   return (
-    <div className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-card">
-      <div className="flex flex-col sm:flex-row items-center gap-6">
+    <div className="rounded-2xl border border-border bg-card p-5 shadow-card">
+      <div className="flex flex-col items-center gap-3 text-center">
         <svg viewBox="0 0 200 110" className="w-44 h-24 shrink-0">
           <path
             d={`M 20 100 A 80 80 0 0 1 180 100`}
@@ -645,7 +700,7 @@ function RiskGauge({
             {confidence}%
           </text>
         </svg>
-        <div className="text-center sm:text-left">
+        <div>
           <span
             className="inline-flex items-center rounded-full px-3 py-1 text-xs font-bold uppercase tracking-wider text-white"
             style={{ backgroundColor: map.color }}
@@ -653,7 +708,7 @@ function RiskGauge({
             {map.label}
           </span>
           <h2 className="mt-2 text-xl font-bold text-primary">{t("analysis.riskLevel")}</h2>
-          <p className="text-sm text-muted-foreground mt-1 max-w-md">{map.sub}</p>
+          <p className="text-sm text-muted-foreground mt-1">{map.sub}</p>
           <p className="text-xs text-muted-foreground mt-1">
             {t("analysis.confidence", { pct: confidence })}
           </p>
@@ -680,7 +735,7 @@ function Shell({ children }: { children: React.ReactNode }) {
     <div className="min-h-screen bg-background flex flex-col">
       <SiteHeader />
       <main className="flex-1">
-        <div className="mx-auto max-w-3xl px-4 sm:px-6 py-8">{children}</div>
+        <div className="mx-auto max-w-5xl px-4 sm:px-6 py-8 pb-24 lg:pb-8">{children}</div>
       </main>
       <SiteFooter />
     </div>
