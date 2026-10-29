@@ -15,6 +15,13 @@
       "when": 1793229274798,
       "tag": "0001_analysis_language_master",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793243603869,
+      "tag": "0002_migration",
+      "breakpoints": true
     }
   ]
 }

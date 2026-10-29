@@ -1,9 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-
-const PRICE_CENTS = 990; // $9.90
-const CURRENCY = "USD";
+import { CURRENCY, PRICE_CENTS, PRICE_VALUE, isValidCapture } from "@/lib/paywall";
+import { paypalAccessToken, paypalBase } from "@/lib/paypal.server";
 
 export const getPaypalPublicConfig = createServerFn({ method: "GET" }).handler(
   async () => {
@@ -16,74 +15,38 @@ export const getPaypalPublicConfig = createServerFn({ method: "GET" }).handler(
   },
 );
 
-function paypalBase(): string {
-  const env = (process.env.PAYPAL_ENV ?? "sandbox").toLowerCase();
-  return env === "live"
-    ? "https://api-m.paypal.com"
-    : "https://api-m.sandbox.paypal.com";
-}
-
-async function paypalAccessToken(): Promise<string> {
-  const clientId = process.env.PAYPAL_CLIENT_ID;
-  const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
-  if (!clientId || !clientSecret) {
-    throw new Error("PayPal credentials not configured");
-  }
-  const auth = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
-  const res = await fetch(`${paypalBase()}/v1/oauth2/token`, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${auth}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: "grant_type=client_credentials",
-  });
-  if (!res.ok) {
-    throw new Error(`PayPal auth failed: ${res.status}`);
-  }
-  const json = (await res.json()) as { access_token: string };
-  return json.access_token;
-}
+type Result =
+  | { ok: true; order_id: string }
+  | { ok: false; code: string };
 
 export const createPaypalOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) =>
     z.object({ dispute_id: z.string().uuid() }).parse(data),
   )
-  .handler(async ({ data, context }) => {
+  .handler(async ({ data, context }): Promise<Result> => {
     const { supabase, userId } = context;
-
-    const { data: dispute, error: dErr } = await supabase
+    const { data: dispute } = await supabase
       .from("disputes")
       .select("id, user_id, paid, category")
       .eq("id", data.dispute_id)
       .maybeSingle();
-    if (dErr || !dispute) {
-      return { ok: false as const, code: "not_found" };
-    }
-    if (dispute.user_id !== userId) {
-      return { ok: false as const, code: "forbidden" };
-    }
-    if (dispute.paid) {
-      return { ok: false as const, code: "already_paid" };
-    }
+    if (!dispute || dispute.user_id !== userId) return { ok: false, code: "forbidden" };
+    if (dispute.paid) return { ok: false, code: "already_paid" };
 
     const token = await paypalAccessToken();
-    const amount = (PRICE_CENTS / 100).toFixed(2);
+    if (!token) return { ok: false, code: "not_configured" };
     const res = await fetch(`${paypalBase()}/v2/checkout/orders`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({
         intent: "CAPTURE",
         purchase_units: [
           {
             reference_id: dispute.id,
-            description: `RefundRights full report (${dispute.category})`,
             custom_id: dispute.id,
-            amount: { currency_code: CURRENCY, value: amount },
+            description: `RefundRights full report (${dispute.category})`,
+            amount: { currency_code: CURRENCY, value: PRICE_VALUE },
           },
         ],
         application_context: {
@@ -94,11 +57,11 @@ export const createPaypalOrder = createServerFn({ method: "POST" })
       }),
     });
     if (!res.ok) {
-      return { ok: false as const, code: "paypal_create_failed" };
+      console.error("paypal create failed", res.status);
+      return { ok: false, code: "paypal_create_failed" };
     }
     const order = (await res.json()) as { id: string };
 
-    // Record pending order with service role
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await supabaseAdmin.from("payments").upsert(
       {
@@ -112,64 +75,63 @@ export const createPaypalOrder = createServerFn({ method: "POST" })
       },
       { onConflict: "paypal_order_id" },
     );
-
-    return { ok: true as const, order_id: order.id };
+    return { ok: true, order_id: order.id };
   });
+
+type CaptureResult = { ok: true; status: string } | { ok: false; code: string };
 
 export const capturePaypalOrder = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) =>
     z
-      .object({
-        order_id: z.string().min(1).max(200),
-        dispute_id: z.string().uuid(),
-      })
+      .object({ order_id: z.string().min(1).max(200), dispute_id: z.string().uuid() })
       .parse(data),
   )
-  .handler(async ({ data, context }) => {
-    const { supabase, userId } = context;
+  .handler(async ({ data, context }): Promise<CaptureResult> => {
+    const { userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { data: dispute } = await supabase
-      .from("disputes")
-      .select("id, user_id, paid")
-      .eq("id", data.dispute_id)
+    // The order must be one we created for this user and this case.
+    const { data: pay } = await supabaseAdmin
+      .from("payments")
+      .select("id, user_id, dispute_id, status")
+      .eq("paypal_order_id", data.order_id)
       .maybeSingle();
-    if (!dispute || dispute.user_id !== userId) {
-      return { ok: false as const, code: "forbidden" };
+    if (!pay || pay.user_id !== userId || pay.dispute_id !== data.dispute_id) {
+      return { ok: false, code: "forbidden" };
     }
+    if (pay.status === "completed") return { ok: true, status: "COMPLETED" };
 
     const token = await paypalAccessToken();
+    if (!token) return { ok: false, code: "not_configured" };
     const res = await fetch(
       `${paypalBase()}/v2/checkout/orders/${encodeURIComponent(data.order_id)}/capture`,
       {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       },
     );
     const payload = await res.json().catch(() => ({}));
     if (!res.ok) {
-      return { ok: false as const, code: "paypal_capture_failed" };
+      console.error("paypal capture failed", res.status);
+      return { ok: false, code: "paypal_capture_failed" };
     }
-    const status = (payload as { status?: string }).status ?? "UNKNOWN";
+    if (!isValidCapture(payload, data.dispute_id)) {
+      await supabaseAdmin
+        .from("payments")
+        .update({ status: "mismatch", raw_payload: payload })
+        .eq("id", pay.id);
+      return { ok: false, code: "capture_mismatch" };
+    }
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await supabaseAdmin
       .from("payments")
-      .update({
-        status: status === "COMPLETED" ? "completed" : status.toLowerCase(),
-        raw_payload: payload,
-      })
-      .eq("paypal_order_id", data.order_id);
-
-    if (status === "COMPLETED") {
-      await supabaseAdmin
-        .from("disputes")
-        .update({ paid: true, paid_at: new Date().toISOString() })
-        .eq("id", data.dispute_id);
-    }
-
-    return { ok: true as const, status };
+      .update({ status: "completed", raw_payload: payload })
+      .eq("id", pay.id);
+    await supabaseAdmin
+      .from("disputes")
+      .update({ paid: true, paid_at: new Date().toISOString() })
+      .eq("id", pay.dispute_id)
+      .eq("paid", false);
+    return { ok: true, status: "COMPLETED" };
   });

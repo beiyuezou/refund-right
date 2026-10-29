@@ -36,6 +36,7 @@ import { PlayAudioButton } from "@/components/PlayAudioButton";
 import { useServerFn } from "@tanstack/react-start";
 import { saveDraftEmail } from "@/lib/analysis.functions";
 import { PaywallGate } from "@/components/PaywallGate";
+import { getAnalysisReport } from "@/lib/report.functions";
 
 export const Route = createFileRoute("/analysis/$disputeId")({
   head: () => ({
@@ -97,12 +98,13 @@ function AnalysisPage() {
   const [edited, setEdited] = useState(false);
   const [pendingRerun, setPendingRerun] = useState<"en" | "zh" | "default" | null>(null);
   const saveDraft = useServerFn(saveDraftEmail);
+  const fetchReport = useServerFn(getAnalysisReport);
 
   const [viewLang, setViewLang] = useState<"en" | "zh" | null>(null);
 
   const load = useCallback(async (lang?: "en" | "zh") => {
     if (!user) return;
-    const [{ data: d }, { data: rows }] = await Promise.all([
+    const [{ data: d }, { rows }] = await Promise.all([
       supabase
         .from("disputes")
         .select(
@@ -110,14 +112,7 @@ function AnalysisPage() {
         )
         .eq("id", disputeId)
         .maybeSingle(),
-      supabase
-        .from("dispute_analyses")
-        .select(
-          "id, risk_level, confidence, recommendation, leverage_points, draft_email, sources, created_at, language, parent_analysis_id",
-        )
-        .eq("dispute_id", disputeId)
-        .order("created_at", { ascending: false })
-        .limit(20),
+      fetchReport({ data: { dispute_id: disputeId } }),
     ]);
     if (d) setDispute(d as Dispute);
     if (rows && rows.length > 0) {
