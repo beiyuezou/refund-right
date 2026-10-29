@@ -254,12 +254,13 @@ Deno.serve(async (req) => {
       userId,
     );
     const legalDetected = detectLegalSources(dispute.country);
-    const legalResults: { slug: string; source: string; content: string }[] = [];
+    const legalResults: { slug: string; url: string; source: string; content: string }[] = [];
     if (legalDetected.length > 0) {
       const settled = await Promise.all(
         legalDetected.map((l) =>
           fetchOtaRules(l.slug, l.url, admin, userId).then((r) => ({
             slug: l.slug,
+            url: l.url,
             source: r.source,
             content: r.content,
           })),
@@ -296,7 +297,13 @@ Deno.serve(async (req) => {
         recommendation: parsed.recommendation,
         leverage_points: parsed.leverage_points,
         draft_email: parsed.draft_email,
-        sources: tavilySources.map(({ title, url, domain }) => ({ title, url, domain })),
+        sources: [
+          ...(detected && groundTruth
+            ? [{ title: `${detected.ota} refund policy`, url: detected.url, domain: hostOf(detected.url), provider: "bright_data" }]
+            : []),
+          ...legalResults.map((l) => ({ title: l.slug.toUpperCase(), url: l.url, domain: hostOf(l.url), provider: "official" })),
+          ...tavilySources.map(({ title, url, domain }) => ({ title, url, domain, provider: "tavily" })),
+        ],
         model,
         language: "en",
       })
