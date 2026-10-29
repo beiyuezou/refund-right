@@ -552,8 +552,9 @@ if (!i18n.isInitialized) {
       interpolation: { escapeValue: false },
       react: { useSuspense: false },
     });
-  (["en", "zh", "nl"] as const).forEach((l) => i18n.addResourceBundle(l, "translation", extra[l], true, false));
 }
+
+(["en", "zh", "nl"] as const).forEach((l) => i18n.addResourceBundle(l, "translation", extra[l], true, false));
 
 // Client-only: sync to user preference AFTER hydration to avoid SSR mismatch.
 // We wait one paint frame so React's initial render matches the server ("en"),
