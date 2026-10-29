@@ -62,6 +62,7 @@ const CAT_TO_CLAIM: Record<string, CategoryKey> = {
   flight: "flight",
   insurance: "insurance",
   general: "hotel",
+  transport: "hotel",
 };
 
 function ArticlePage() {
