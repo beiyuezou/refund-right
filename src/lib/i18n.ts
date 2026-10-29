@@ -20,6 +20,7 @@ const CODES: string[] = LANGUAGES.map((l) => l.code);
 const LANG_KEY = "rr_lang";
 
 const en = {
+  specialCode: {"have": "Have a special code?", "placeholder": "Enter special code", "redeem": "Redeem", "success": "Code accepted — unlocking your full report.", "invalid": "This code is not valid.", "expired": "This code has expired.", "exhausted": "This code has reached its usage limit.", "rate_limited": "Too many attempts. Please try again in an hour.", "error": "Could not redeem the code. Please try again."},
   nav: {
     knowledge: "Knowledge",
     myDisputes: "Disputes",
@@ -273,6 +274,7 @@ const en = {
 };
 
 const zh: typeof en = {
+  specialCode: {"have": "有特别码？", "placeholder": "输入特别码", "redeem": "兑换", "success": "特别码有效，正在解锁完整报告。", "invalid": "特别码无效。", "expired": "特别码已过期。", "exhausted": "特别码已达到使用上限。", "rate_limited": "尝试次数过多，请一小时后再试。", "error": "兑换失败，请重试。"},
   nav: {
     knowledge: "知识库",
     myDisputes: "申诉",

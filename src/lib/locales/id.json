@@ -242,5 +242,16 @@
     "errTranscribe": "Transkripsi gagal. Silakan coba lagi.",
     "errEmpty": "Tidak ada suara terdeteksi.",
     "errTts": "Gagal menghasilkan audio."
+  },
+  "specialCode": {
+    "have": "Punya kode khusus?",
+    "placeholder": "Masukkan kode khusus",
+    "redeem": "Tukarkan",
+    "success": "Kode diterima — membuka laporan lengkap Anda.",
+    "invalid": "Kode tidak valid.",
+    "expired": "Kode sudah kedaluwarsa.",
+    "exhausted": "Kode telah mencapai batas penggunaan.",
+    "rate_limited": "Terlalu banyak percobaan. Coba lagi dalam satu jam.",
+    "error": "Gagal menukarkan kode. Silakan coba lagi."
   }
 }

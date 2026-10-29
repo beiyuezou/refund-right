@@ -242,5 +242,16 @@
     "errTranscribe": "Chuyển đổi giọng nói thành văn bản thất bại. Vui lòng thử lại.",
     "errEmpty": "Không phát hiện thấy giọng nói.",
     "errTts": "Không thể phát âm thanh."
+  },
+  "specialCode": {
+    "have": "Bạn có mã đặc biệt?",
+    "placeholder": "Nhập mã đặc biệt",
+    "redeem": "Đổi mã",
+    "success": "Mã hợp lệ — đang mở khóa báo cáo đầy đủ.",
+    "invalid": "Mã không hợp lệ.",
+    "expired": "Mã đã hết hạn.",
+    "exhausted": "Mã đã đạt giới hạn sử dụng.",
+    "rate_limited": "Quá nhiều lần thử. Vui lòng thử lại sau một giờ.",
+    "error": "Không thể đổi mã. Vui lòng thử lại."
   }
 }
