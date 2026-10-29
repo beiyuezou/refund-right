@@ -84,7 +84,7 @@ type Analysis = {
   recommendation: string;
   leverage_points: LeveragePoint[];
   draft_email: string;
-  sources?: { title: string; url: string; domain: string }[] | null;
+  sources?: { title: string; url: string; domain: string; provider?: "tavily" | "bright_data" | "official" }[] | null;
   created_at: string;
   model?: string;
 };
@@ -456,14 +456,19 @@ function AnalysisPage() {
           {Array.isArray(analysis.sources) && analysis.sources.length > 0 && (
             <section className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-card">
               <h2 className="text-lg font-semibold text-primary">{t("analysis.sources")}</h2>
-              <p className="text-sm text-muted-foreground mt-1">{t("analysis.sourcesSub")}</p>
+              <p className="text-sm text-muted-foreground mt-1">{t("analysis.sourcesSub")} {t("srcLabel.via")}</p>
               <ul className="mt-4 space-y-2">
                 {analysis.sources.map((s, i) => (
                   <li key={i} className="rounded-lg border border-border bg-secondary/30 p-3">
                     <a href={s.url} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline">
                       {s.title || s.domain}
                     </a>
-                    <p className="text-xs text-muted-foreground mt-0.5">{s.domain}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 flex flex-wrap items-center gap-2">
+                      <span className="rounded-full border border-accent/40 bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent">
+                        {t(`srcLabel.${s.provider ?? "tavily"}`)}
+                      </span>
+                      {s.domain}
+                    </p>
                   </li>
                 ))}
               </ul>

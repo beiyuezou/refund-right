@@ -51,6 +51,12 @@ export const extra = {
       f6: "PDF report and case tracking",
       price: "US$9.90 one-time per case",
     },
+    srcLabel: {
+      tavily: "Live search · Tavily",
+      bright_data: "Platform policy · Bright Data",
+      official: "Official law source · Bright Data",
+      via: "Retrieved live before the analysis via Tavily search and Bright Data.",
+    },
     help: {
       cta: "Request human help",
       title: "Request human help",
@@ -146,6 +152,12 @@ export const extra = {
       f6: "PDF 报告与案件追踪",
       price: "每个案件一次性 US$9.90",
     },
+    srcLabel: {
+      tavily: "实时搜索 · Tavily",
+      bright_data: "平台政策 · Bright Data",
+      official: "官方法律来源 · Bright Data",
+      via: "分析前通过 Tavily 搜索和 Bright Data 实时获取。",
+    },
     help: {
       cta: "申请人工协助",
       title: "申请人工协助",
@@ -240,6 +252,12 @@ export const extra = {
       f5: "Klaar-om-te-versturen klachtmail",
       f6: "PDF-rapport en zaakopvolging",
       price: "Eenmalig US$9,90 per zaak",
+    },
+    srcLabel: {
+      tavily: "Live zoeken · Tavily",
+      bright_data: "Platformbeleid · Bright Data",
+      official: "Officiële wetsbron · Bright Data",
+      via: "Vóór de analyse live opgehaald via Tavily en Bright Data.",
     },
     help: {
       cta: "Vraag menselijke hulp",
