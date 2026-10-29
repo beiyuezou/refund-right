@@ -17,7 +17,9 @@ export type AuditAction =
   | "bright_data.fetch_triggered"
   | "bright_data.fetch_succeeded"
   | "bright_data.fetch_failed"
-  | "bright_data.cache_hit";
+  | "bright_data.cache_hit"
+  | "special_code.redeemed"
+  | "special_code.failed";
 
 export type AuditInput = {
   userId?: string | null;

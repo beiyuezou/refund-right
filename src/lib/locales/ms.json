@@ -242,5 +242,16 @@
     "errTranscribe": "Transkripsi gagal. Sila cuba lagi.",
     "errEmpty": "Tiada pertuturan dikesan.",
     "errTts": "Gagal menjana audio."
+  },
+  "specialCode": {
+    "have": "Ada kod khas?",
+    "placeholder": "Masukkan kod khas",
+    "redeem": "Tebus",
+    "success": "Kod diterima — membuka laporan penuh anda.",
+    "invalid": "Kod ini tidak sah.",
+    "expired": "Kod ini telah tamat tempoh.",
+    "exhausted": "Kod ini telah mencapai had penggunaan.",
+    "rate_limited": "Terlalu banyak cubaan. Cuba lagi dalam sejam.",
+    "error": "Gagal menebus kod. Sila cuba lagi."
   }
 }

@@ -242,5 +242,16 @@
     "errTranscribe": "Transcriptie mislukt. Probeer het opnieuw.",
     "errEmpty": "Geen spraak gedetecteerd.",
     "errTts": "Kon geen audio genereren."
+  },
+  "specialCode": {
+    "have": "Heb je een speciale code?",
+    "placeholder": "Voer speciale code in",
+    "redeem": "Inwisselen",
+    "success": "Code geaccepteerd — je volledige rapport wordt ontgrendeld.",
+    "invalid": "Deze code is ongeldig.",
+    "expired": "Deze code is verlopen.",
+    "exhausted": "Deze code heeft de gebruikslimiet bereikt.",
+    "rate_limited": "Te veel pogingen. Probeer het over een uur opnieuw.",
+    "error": "Code inwisselen mislukt. Probeer opnieuw."
   }
 }
