@@ -1,6 +1,12 @@
 # RefundRights
 
-AI legal assistant for travel refund disputes in Southeast Asia.
+RefundRights is a multi-agent app for travel refunds. It helps travelers secure unfair or negotiable refunds on hotels and flights booked while traveling—saving time and effort.
+
+## ✨ Why RefundRights
+
+旅行者在旅途中常遇到酒店、机票退款规则复杂、客服响应慢、退款依据难以整理的问题。  
+RefundRights 通过多个协作 Agent 自动分析订单、政策与沟通材料，帮助用户更快准备退款请求。
+
 
 ## Nebius × NVIDIA hackathon compliance
 - **Inference platform:** Nebius Token Factory — `https://api.tokenfactory.nebius.com/v1/chat/completions`
