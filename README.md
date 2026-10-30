@@ -12,7 +12,7 @@ An AI legal copilot that helps travelers in Southeast Asia win back hotel deposi
 [![ElevenLabs](https://img.shields.io/badge/Voice-ElevenLabs-111827)](https://elevenlabs.io)
 [![PayPal](https://img.shields.io/badge/Payments-PayPal%20Sandbox-003087)](https://developer.paypal.com)
 
-**[🌐 Live demo](https://refundrights.lovable.app)** · **[🎬 Demo video](VIDEO_URL)** · **[🔒 Security](SECURITY.md)**
+**[🌐 Live demo](https://refundrights.lovable.app)** · **[🎬 Demo video](https://www.youtube.com/watch?v=PMBVio7i49Q)** · **[🔒 Security](SECURITY.md)**
 
 <img src="docs/screenshots/home.jpg" alt="RefundRights home page" width="860" />
 
