@@ -1,5 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeader } from "@tanstack/react-start/server";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 
 export const MAX_HELP_REQUESTS_PER_DAY = 3;
@@ -21,21 +21,15 @@ const schema = z
 type Result = { ok: true } | { ok: false; code: "rate_limited" | "forbidden" | "error" };
 
 export const submitHelpRequest = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) => schema.parse(data))
-  .handler(async ({ data }): Promise<Result> => {
+  .handler(async ({ data, context }): Promise<Result> => {
+    // Sign-in required: the caller is verified by the auth middleware.
+    const { userId, supabase } = context;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // Optional sign-in: identify the caller from the bearer token if present.
-    let userId: string | null = null;
-    const auth = getRequestHeader("authorization");
-    if (auth?.startsWith("Bearer ")) {
-      const { data: u } = await supabaseAdmin.auth.getUser(auth.slice(7));
-      userId = u.user?.id ?? null;
-    }
-
     if (data.dispute_id) {
-      if (!userId) return { ok: false, code: "forbidden" };
-      const { data: d } = await supabaseAdmin
+      const { data: d } = await supabase
         .from("disputes").select("user_id").eq("id", data.dispute_id).maybeSingle();
       if (!d || d.user_id !== userId) return { ok: false, code: "forbidden" };
     }
@@ -46,7 +40,7 @@ export const submitHelpRequest = createServerFn({ method: "POST" })
       .from("expert_help_requests")
       .select("id", { count: "exact", head: true })
       .gte("created_at", since);
-    const { count } = await (userId ? q.or(`user_id.eq.${userId},contact_email.eq.${email}`) : q.eq("contact_email", email));
+    const { count } = await q.eq("user_id", userId);
     if ((count ?? 0) >= MAX_HELP_REQUESTS_PER_DAY) return { ok: false, code: "rate_limited" };
 
     const { error } = await supabaseAdmin.from("expert_help_requests").insert({

@@ -100,7 +100,7 @@ export const capturePaypalOrder = createServerFn({ method: "POST" })
     if (!pay || pay.user_id !== userId || pay.dispute_id !== data.dispute_id) {
       return { ok: false, code: "forbidden" };
     }
-    if (pay.status === "completed") return { ok: true, status: "COMPLETED" };
+    if (pay.status === "completed" || pay.status === "captured") return { ok: true, status: "CAPTURED" };
 
     const token = await paypalAccessToken();
     if (!token) return { ok: false, code: "not_configured" };
@@ -125,14 +125,12 @@ export const capturePaypalOrder = createServerFn({ method: "POST" })
       return { ok: false, code: "capture_mismatch" };
     }
 
+    // Do NOT unlock here: only the signature-verified PayPal webhook sets
+    // disputes.paid. Record that capture succeeded so the client can poll.
     await supabaseAdmin
       .from("payments")
-      .update({ status: "completed", raw_payload: null })
-      .eq("id", pay.id);
-    await supabaseAdmin
-      .from("disputes")
-      .update({ paid: true, paid_at: new Date().toISOString() })
-      .eq("id", pay.dispute_id)
-      .eq("paid", false);
-    return { ok: true, status: "COMPLETED" };
+      .update({ status: "captured", raw_payload: null })
+      .eq("id", pay.id)
+      .neq("status", "completed");
+    return { ok: true, status: "CAPTURED" };
   });

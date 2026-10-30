@@ -1,3 +1,4 @@
+import { supabase } from "@/integrations/supabase/client";
 import { useEffect, useMemo, useState } from "react";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { useServerFn } from "@tanstack/react-start";
@@ -79,8 +80,15 @@ export function PayPalCheckoutButton({ disputeId, onPaid }: Props) {
             const res = await captureOrder({
               data: { order_id: data.orderID, dispute_id: disputeId },
             });
-            if (res.ok && res.status === "COMPLETED") {
+            if (res.ok) {
               toast.success("Payment complete — unlocking your full report.");
+              // The unlock is applied by PayPal's verified notification; wait for it.
+              for (let i = 0; i < 20; i++) {
+                const { data: d } = await supabase
+                  .from("disputes").select("paid").eq("id", disputeId).maybeSingle();
+                if (d?.paid) break;
+                await new Promise((r) => setTimeout(r, 1500));
+              }
               onPaid();
             } else {
               toast.error("Payment could not be captured.");
