@@ -148,3 +148,9 @@ docs/screenshots/      README images
 ## Disclaimer
 
 RefundRights provides AI-generated information, not legal advice. Example cases in the app are fictional.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
+Copyright © 2026 Beiyuezou
