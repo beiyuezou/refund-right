@@ -92,6 +92,12 @@ function HelpPage() {
             <p className="mt-2 text-muted-foreground">{t("help.doneSub")}</p>
             <Button asChild className="mt-6"><Link to="/">{t("help.back")}</Link></Button>
           </div>
+        ) : !user ? (
+          <div className="rounded-3xl border border-border bg-card p-8 text-center">
+            <h1 className="text-2xl font-bold text-primary">{t("help.title")}</h1>
+            <p className="mt-2 text-muted-foreground">{t("help.signInRequired", { defaultValue: "Please sign in to request expert help." })}</p>
+            <Button asChild className="mt-6"><Link to="/auth" search={{ redirect: "/help" }}>{t("help.signIn", { defaultValue: "Sign in" })}</Link></Button>
+          </div>
         ) : (
           <>
             <h1 className="text-3xl font-bold text-primary tracking-tight">{t("help.title")}</h1>
