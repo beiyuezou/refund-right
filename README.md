@@ -145,6 +145,10 @@ docs/screenshots/      README images
 - Admin console for human expert requests
 - Background re-checks of platform policy changes (Nebius Serverless Jobs)
 
+## 🎬 Demo
+
+[![RefundRights Demo](https://img.youtube.com/vi/你的视频ID/0.jpg)](https://www.youtube.com/watch?v=PMBVio7i49Q)
+
 ## Disclaimer
 
 RefundRights provides AI-generated information, not legal advice. Example cases in the app are fictional.
